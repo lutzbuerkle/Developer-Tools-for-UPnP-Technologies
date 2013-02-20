@@ -10,6 +10,10 @@ stack generation tools and UPnP AV debug and reference tools.
 Most of the tools are written in C# but small C/C++ stack can also be generated.
 This project is open source under the Apache 2.0 license.
 
+Version
+-------
+In sync with [v0.0.58](http://opentools.homeip.net/dev-tools-for-upnp)
+
 Links
 -----
 [Open Software Projects by Ylian Saint Hilaire](http://opentools.homeip.net/dev-tools-for-upnp)  
