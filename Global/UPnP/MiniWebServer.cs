@@ -191,8 +191,9 @@ namespace OpenSource.UPnP
             {
                 MainSocket.BeginAccept(new AsyncCallback(Accept), null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 // Socket was closed
             }
         }

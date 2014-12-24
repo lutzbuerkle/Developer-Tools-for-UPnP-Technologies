@@ -179,9 +179,10 @@ namespace OpenSource.UPnP
 				{
 					return((string)((ArrayList)((ArrayList)ATTRLIST[A-1])[M-1])[V-1]);
 				}
-				catch(Exception)
+				catch(Exception ex)
 				{
-					return("");
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                    return ("");
 				}
 			}
 			set

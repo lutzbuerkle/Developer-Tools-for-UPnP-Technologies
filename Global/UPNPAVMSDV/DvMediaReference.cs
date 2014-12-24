@@ -335,7 +335,7 @@ namespace OpenSource.UPnP.AV.MediaServer.DV
 			}
 			xmlWriter.Close();
 
-			int crpos = xmlResult.IndexOf(Environment.NewLine);
+			int crpos = xmlResult.IndexOf("\r\n");
 			crpos = xmlResult.IndexOf('<', crpos);
 			string trunc = xmlResult.Remove(0, crpos);
 			return trunc;

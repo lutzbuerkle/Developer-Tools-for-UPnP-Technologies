@@ -32,12 +32,18 @@ namespace OpenSource.UPnP
             if (sitelink != null)
             {
                 try { System.Diagnostics.Process.Start(sitelink); }
-                catch (System.ComponentModel.Win32Exception) { }
+                catch (System.ComponentModel.Win32Exception ex) 
+                {
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                }
             }
             else
             {
                 try { System.Diagnostics.Process.Start("http://opentools.homeip.net"); }
-                catch (System.ComponentModel.Win32Exception) { }
+                catch (System.ComponentModel.Win32Exception ex) 
+                {
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                }
             }
         }
 
@@ -176,7 +182,10 @@ namespace OpenSource.UPnP
             {
                 if (Directory.Exists(tpath + TempFolder)) Directory.Delete(tpath + TempFolder, true);
             }
-            catch (Exception) { } // In some cases, we try to delete too quickly and this will fail. It's ok, not critical.
+            catch (Exception ex) 
+            {
+                OpenSource.Utilities.EventLogger.Log(ex);
+            } // In some cases, we try to delete too quickly and this will fail. It's ok, not critical.
 
             // See if we need to perform a version check
             RegistryKey key = GetGlobalRegKey();
@@ -239,8 +248,9 @@ namespace OpenSource.UPnP
                     }
                     updatelink = page.Substring(0, i);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    OpenSource.Utilities.EventLogger.Log(ex);
                     requestor.OnRequestCompleted += new HttpRequestor.RequestCompletedHandler(requestor_OnRequestCompleted);
                     requestor = null;
                     return;
@@ -279,8 +289,9 @@ namespace OpenSource.UPnP
                 ProcessStartInfo startInfo = new ProcessStartInfo(tpath + "AutoUpdateTool.exe", args);
                 Process process = Process.Start(startInfo);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 return;
             }
             Application.Exit();

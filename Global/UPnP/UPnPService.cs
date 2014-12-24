@@ -83,6 +83,32 @@ namespace OpenSource.UPnP
         }
     }
 
+    public class XMLParsingException : Exception
+    {
+        public int line;
+        public int position;
+        public XMLParsingException(string msg, int ln, int pos)
+            : base(msg)
+        {
+            line = ln-1;
+            position = pos;
+        }
+
+        public XMLParsingException(string msg, int ln, int pos, Exception ex)
+            : base(msg,ex)
+        {
+            line = ln-1;
+            position = pos;
+        }
+
+        public override string ToString()
+        {
+            return base.ToString() + " near line " + line.ToString() + ", position " + position.ToString();
+        }
+
+
+    }
+
     /// <summary>
     /// This exception gets thrown if you try to subscribe to a service, that you already subscribed to.
     /// </summary>
@@ -93,6 +119,7 @@ namespace OpenSource.UPnP
         {
         }
     }
+
     public class UPnPTypeMismatchException : Exception
     {
         public UPnPTypeMismatchException(String msg)
@@ -2249,60 +2276,67 @@ namespace OpenSource.UPnP
                 this.Minor = int.Parse(mn);
             }
         }
-        static internal UPnPService Parse(String XML)
+        static internal UPnPService Parse(String XML, int startLine)
         {
             StringReader MyString = new StringReader(XML);
             XmlTextReader XMLDoc = new XmlTextReader(MyString);
             UPnPService RetVal = new UPnPService(1);
 
-            XMLDoc.Read();
-            XMLDoc.MoveToContent();
-
-            if (XMLDoc.LocalName == "service")
+            try
             {
-                if (XMLDoc.AttributeCount > 0)
+                XMLDoc.Read();
+                XMLDoc.MoveToContent();
+
+                if (XMLDoc.LocalName == "service")
                 {
-                    for (int ax = 0; ax < XMLDoc.AttributeCount; ++ax)
+                    if (XMLDoc.AttributeCount > 0)
                     {
-                        XMLDoc.MoveToAttribute(ax);
-                        if (XMLDoc.LocalName == "MaxVersion")
+                        for (int ax = 0; ax < XMLDoc.AttributeCount; ++ax)
                         {
-                            RetVal.SetVersion(XMLDoc.Value);
+                            XMLDoc.MoveToAttribute(ax);
+                            if (XMLDoc.LocalName == "MaxVersion")
+                            {
+                                RetVal.SetVersion(XMLDoc.Value);
+                            }
                         }
+                        XMLDoc.MoveToContent();
+                        XMLDoc.Read();
                     }
-                    XMLDoc.MoveToContent();
-                    XMLDoc.Read();
-                }
-                else
-                {
-                    XMLDoc.Read();
-                    XMLDoc.MoveToContent();
-                }
-                while (XMLDoc.LocalName != "service")
-                {
-                    switch (XMLDoc.LocalName)
+                    else
                     {
-                        case "serviceType":
-                            RetVal.ServiceURN = XMLDoc.ReadString();
-                            break;
-                        case "serviceId":
-                            RetVal.ServiceID = XMLDoc.ReadString();
-                            break;
-                        case "SCPDURL":
-                            RetVal.SCPDURL = XMLDoc.ReadString();
-                            break;
-                        case "controlURL":
-                            RetVal.ControlURL = XMLDoc.ReadString();
-                            break;
-                        case "eventSubURL":
-                            RetVal.EventURL = XMLDoc.ReadString();
-                            break;
-                        default:
-                            break;
+                        XMLDoc.Read();
+                        XMLDoc.MoveToContent();
                     }
-                    XMLDoc.Read();
-                    XMLDoc.MoveToContent();
+                    while (XMLDoc.LocalName != "service")
+                    {
+                        switch (XMLDoc.LocalName)
+                        {
+                            case "serviceType":
+                                RetVal.ServiceURN = XMLDoc.ReadString();
+                                break;
+                            case "serviceId":
+                                RetVal.ServiceID = XMLDoc.ReadString();
+                                break;
+                            case "SCPDURL":
+                                RetVal.SCPDURL = XMLDoc.ReadString();
+                                break;
+                            case "controlURL":
+                                RetVal.ControlURL = XMLDoc.ReadString();
+                                break;
+                            case "eventSubURL":
+                                RetVal.EventURL = XMLDoc.ReadString();
+                                break;
+                            default:
+                                break;
+                        }
+                        XMLDoc.Read();
+                        XMLDoc.MoveToContent();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new XMLParsingException("Invalid service XML", startLine + XMLDoc.LineNumber, XMLDoc.LinePosition, ex);
             }
             return (RetVal);
         }
@@ -2381,13 +2415,14 @@ namespace OpenSource.UPnP
         public static UPnPService FromSCPD(string SCPDXML)
         {
             UPnPService s = new UPnPService(1);
-            s.ParseSCPD(SCPDXML);
+            s.ParseSCPD(SCPDXML, 0);
             return (s);
         }
-        internal void ParseSCPD(String XML)
+        internal void ParseSCPD(String XML, int startLine)
         {
             bool loadSchema = false;
             string schemaUrn = "";
+
             if (XML == "")
             {
                 return;
@@ -2403,106 +2438,72 @@ namespace OpenSource.UPnP
 
             if (XMLDoc.LocalName == "scpd")
             {
-                if (XMLDoc.HasAttributes)
+                try
                 {
-                    // May be UPnP/1.1 SCPD
-                    for (int i = 0; i < XMLDoc.AttributeCount; i++)
+                    if (XMLDoc.HasAttributes)
                     {
-                        XMLDoc.MoveToAttribute(i);
-                        if (XMLDoc.Prefix == "xmlns")
+                        // May be UPnP/1.1 SCPD
+                        for (int i = 0; i < XMLDoc.AttributeCount; i++)
                         {
-                            loadSchema = true;
-                            schemaUrn = XMLDoc.Value;
-                        }
-                        // ToDo: Try to load the schema from the network first
-                        //						if (XMLDoc.LocalName=="schemaLocation")
-                        //						{
-                        //							if (XMLDoc.Value=="http://www.vendor.org/Schemas/Sample.xsd")
-                        //							{
-                        //								schemaUrn = XMLDoc.LookupNamespace(XMLDoc.Prefix);
-                        //							}
-                        //						}
-                    }
-                    XMLDoc.MoveToElement();
-
-                    if (loadSchema)
-                    {
-                        // Prompt Application for local Schema Location
-                        System.Windows.Forms.OpenFileDialog fd = new System.Windows.Forms.OpenFileDialog();
-                        fd.Multiselect = false;
-                        fd.Title = schemaUrn;
-                        if (fd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                        {
-                            FileStream fs = (FileStream)fd.OpenFile();
-                            System.Text.UTF8Encoding U = new System.Text.UTF8Encoding();
-                            byte[] buffer = new byte[(int)fs.Length];
-                            fs.Read(buffer, 0, buffer.Length);
-                            UPnPComplexType[] complexTypes = UPnPComplexType.Parse(U.GetString(buffer));
-                            fs.Close();
-                            foreach (UPnPComplexType complexType in complexTypes)
+                            XMLDoc.MoveToAttribute(i);
+                            if (XMLDoc.Prefix == "xmlns")
                             {
-                                this.AddComplexType(complexType);
+                                loadSchema = true;
+                                schemaUrn = XMLDoc.Value;
                             }
+                            // ToDo: Try to load the schema from the network first
+                            //						if (XMLDoc.LocalName=="schemaLocation")
+                            //						{
+                            //							if (XMLDoc.Value=="http://www.vendor.org/Schemas/Sample.xsd")
+                            //							{
+                            //								schemaUrn = XMLDoc.LookupNamespace(XMLDoc.Prefix);
+                            //							}
+                            //						}
                         }
-                    }
-                }
+                        XMLDoc.MoveToElement();
 
-
-                XMLDoc.Read();
-                XMLDoc.MoveToContent();
-                while ((XMLDoc.LocalName != "scpd") && (XMLDoc.EOF == false))
-                {
-                    if (XMLDoc.LocalName == "actionList" && !XMLDoc.IsEmptyElement)
-                    {
-                        XMLDoc.Read();
-                        XMLDoc.MoveToContent();
-                        while ((XMLDoc.LocalName != "actionList") && (XMLDoc.EOF == false))
+                        if (loadSchema)
                         {
-                            if (XMLDoc.LocalName == "action")
+                            // Prompt Application for local Schema Location
+                            System.Windows.Forms.OpenFileDialog fd = new System.Windows.Forms.OpenFileDialog();
+                            fd.Multiselect = false;
+                            fd.Title = schemaUrn;
+                            if (fd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                             {
-                                ParseActionXml("<action>\r\n" + XMLDoc.ReadInnerXml() + "</action>");
-                            }
-                            if (!XMLDoc.IsStartElement())
-                            {
-                                if (XMLDoc.LocalName != "actionList")
+                                FileStream fs = (FileStream)fd.OpenFile();
+                                System.Text.UTF8Encoding U = new System.Text.UTF8Encoding();
+                                byte[] buffer = new byte[(int)fs.Length];
+                                fs.Read(buffer, 0, buffer.Length);
+                                UPnPComplexType[] complexTypes = UPnPComplexType.Parse(U.GetString(buffer));
+                                fs.Close();
+                                foreach (UPnPComplexType complexType in complexTypes)
                                 {
-                                    XMLDoc.Read();
-                                    XMLDoc.MoveToContent();
+                                    this.AddComplexType(complexType);
                                 }
                             }
                         }
                     }
-                    else
+
+
+                    XMLDoc.Read();
+                    XMLDoc.MoveToContent();
+                    while ((XMLDoc.LocalName != "scpd") && (XMLDoc.EOF == false))
                     {
-                        if (XMLDoc.LocalName == "serviceStateTable")
+                        if (XMLDoc.LocalName == "actionList" && !XMLDoc.IsEmptyElement)
                         {
                             XMLDoc.Read();
                             XMLDoc.MoveToContent();
-
-                            while ((XMLDoc.LocalName != "serviceStateTable") &&
-                                (XMLDoc.EOF == false))
+                            while ((XMLDoc.LocalName != "actionList") && (XMLDoc.EOF == false))
                             {
-                                if (XMLDoc.LocalName == "stateVariable")
+                                if (XMLDoc.LocalName == "action")
                                 {
-                                    evented = "no";
-                                    multicast = "no";
-
-                                    XMLDoc.MoveToAttribute("sendEvents");
-                                    if (XMLDoc.LocalName == "sendEvents")
-                                    {
-                                        evented = XMLDoc.GetAttribute("sendEvents");
-                                    }
-                                    XMLDoc.MoveToAttribute("multicast");
-                                    if (XMLDoc.LocalName == "multicast")
-                                    {
-                                        multicast = XMLDoc.GetAttribute("multicast");
-                                    }
-                                    XMLDoc.MoveToContent();
-                                    ParseStateVarXml(evented, multicast, XMLDoc);
+                                    int embeddedLine = XMLDoc.LineNumber;
+                                    //ParseActionXml("<action>\r\n" + XMLDoc.ReadInnerXml() + "</action>", embeddedLine);
+                                    ParseActionXml(XMLDoc.ReadOuterXml(), embeddedLine-1);
                                 }
                                 if (!XMLDoc.IsStartElement())
                                 {
-                                    if (XMLDoc.LocalName != "serviceStateTable")
+                                    if (XMLDoc.LocalName != "actionList")
                                     {
                                         XMLDoc.Read();
                                         XMLDoc.MoveToContent();
@@ -2512,17 +2513,65 @@ namespace OpenSource.UPnP
                         }
                         else
                         {
-                            XMLDoc.Skip();
-                        }
+                            if (XMLDoc.LocalName == "serviceStateTable")
+                            {
+                                XMLDoc.Read();
+                                XMLDoc.MoveToContent();
 
+                                while ((XMLDoc.LocalName != "serviceStateTable") &&
+                                    (XMLDoc.EOF == false))
+                                {
+                                    if (XMLDoc.LocalName == "stateVariable")
+                                    {
+                                        evented = "no";
+                                        multicast = "no";
+
+                                        XMLDoc.MoveToAttribute("sendEvents");
+                                        if (XMLDoc.LocalName == "sendEvents")
+                                        {
+                                            evented = XMLDoc.GetAttribute("sendEvents");
+                                        }
+                                        XMLDoc.MoveToAttribute("multicast");
+                                        if (XMLDoc.LocalName == "multicast")
+                                        {
+                                            multicast = XMLDoc.GetAttribute("multicast");
+                                        }
+                                        XMLDoc.MoveToContent();
+                                        ParseStateVarXml(evented, multicast, XMLDoc, startLine);
+                                    }
+                                    if (!XMLDoc.IsStartElement())
+                                    {
+                                        if (XMLDoc.LocalName != "serviceStateTable")
+                                        {
+                                            XMLDoc.Read();
+                                            XMLDoc.MoveToContent();
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                XMLDoc.Skip();
+                            }
+
+                        }
+                        if (!XMLDoc.IsStartElement())
+                        {
+                            XMLDoc.Read();
+                            XMLDoc.MoveToContent();
+                        }
                     }
-                    if (!XMLDoc.IsStartElement())
-                    {
-                        XMLDoc.Read();
-                        XMLDoc.MoveToContent();
-                    }
+                    // End of While
+
                 }
-                // End of While
+                catch (XMLParsingException ex)
+                {
+                    throw ex;
+                }
+                catch (Exception ex)
+                {
+                    throw new XMLParsingException("Invalid SCPD XML", startLine + XMLDoc.LineNumber, XMLDoc.LinePosition, ex);
+                }
 
 
                 // Add Associations
@@ -2540,7 +2589,7 @@ namespace OpenSource.UPnP
             }
             // End of If
         }
-        private void ParseStateVarXml(String evented, String multicasted, XmlTextReader XMLDoc)
+        private void ParseStateVarXml(String evented, String multicasted, XmlTextReader XMLDoc, int startLine)
         {
             //			if (XML=="")
             //			{
@@ -2605,6 +2654,8 @@ namespace OpenSource.UPnP
                                 break;
                             case "allowedValueList":
                                 bool done2 = false;
+                                bool valueSet = false;
+                                bool emptyValue = false;
 
                                 while (!done2 && XMLDoc.Read())
                                 {
@@ -2612,8 +2663,20 @@ namespace OpenSource.UPnP
                                     {
                                         case XmlNodeType.Element:
                                             lname2 = XMLDoc.LocalName;
+                                            if (lname2 == "allowedValue")
+                                            {
+                                                valueSet = false;
+                                            }
                                             break;
                                         case XmlNodeType.EndElement:
+                                            if (XMLDoc.LocalName == "allowedValue")
+                                            {
+                                                if (!valueSet && !emptyValue)
+                                                {
+                                                    emptyValue = true;
+                                                    allowedValueList.Add("");
+                                                }
+                                            }
                                             if (XMLDoc.LocalName == "allowedValueList")
                                             {
                                                 done2 = true;
@@ -2623,6 +2686,7 @@ namespace OpenSource.UPnP
                                             if (lname2 == "allowedValue")
                                             {
                                                 allowedValueList.Add(XMLDoc.Value);
+                                                valueSet = true;
                                             }
                                             break;
                                     }
@@ -2675,6 +2739,9 @@ namespace OpenSource.UPnP
                             case "name":
                                 name = XMLDoc.Value.Trim();
                                 break;
+                            case "sendEventsAttribute": // Non-standard, but seems to be used widely
+                                evented = XMLDoc.Value.Trim();
+                                break;
                             case "dataType":
                                 DataType = XMLDoc.Value.Trim();
                                 break;
@@ -2685,8 +2752,17 @@ namespace OpenSource.UPnP
                         }
                         break;
                 }
-            }
+           }
 
+            if (name == "")
+            {
+                throw new XMLParsingException("State Variable has no name", startLine + XMLDoc.LineNumber, XMLDoc.LinePosition);
+            }
+            if (DataType == "")
+            {
+                throw new XMLParsingException("State Variable: \"" + name + "\" has no dataType", startLine + XMLDoc.LineNumber, XMLDoc.LinePosition);
+            }
+  
             UPnPStateVariable var;
             if (CT == null)
             {
@@ -2778,7 +2854,7 @@ namespace OpenSource.UPnP
                 }
             }*/
         }
-        private void ParseActionXml(String XML)
+        private void ParseActionXml(String XML, int startLine)
         {
             UPnPAction action = new UPnPAction();
             UPnPArgument arg;
@@ -2786,69 +2862,76 @@ namespace OpenSource.UPnP
             StringReader MyString = new StringReader(XML);
             XmlTextReader XMLDoc = new XmlTextReader(MyString);
 
-            XMLDoc.Read();
-            XMLDoc.MoveToContent();
-            XMLDoc.Read();
-            XMLDoc.MoveToContent();
-            while (XMLDoc.LocalName != "action")
+            try
             {
-                switch (XMLDoc.LocalName)
+                XMLDoc.Read();
+                XMLDoc.MoveToContent();
+                XMLDoc.Read();
+                XMLDoc.MoveToContent();
+                while (XMLDoc.LocalName != "action")
                 {
-                    case "name":
-                        action.Name = XMLDoc.ReadString().Trim();
-                        break;
-                    case "argumentList":
-                        if (XMLDoc.IsEmptyElement)
-                        {
+                    switch (XMLDoc.LocalName)
+                    {
+                        case "name":
+                            action.Name = XMLDoc.ReadString().Trim();
                             break;
-                        }
-                        XMLDoc.Read();
-                        XMLDoc.MoveToContent();
-                        while (XMLDoc.LocalName != "argumentList" && XMLDoc.EOF == false)
-                        {
-                            if (XMLDoc.LocalName == "argument")
+                        case "argumentList":
+                            if (XMLDoc.IsEmptyElement)
                             {
-                                arg = new UPnPArgument();
-                                XMLDoc.Read();
-                                XMLDoc.MoveToContent();
-                                while (XMLDoc.LocalName != "argument")
+                                break;
+                            }
+                            XMLDoc.Read();
+                            XMLDoc.MoveToContent();
+                            while (XMLDoc.LocalName != "argumentList" && XMLDoc.EOF == false)
+                            {
+                                if (XMLDoc.LocalName == "argument")
                                 {
-                                    switch (XMLDoc.LocalName)
+                                    arg = new UPnPArgument();
+                                    XMLDoc.Read();
+                                    XMLDoc.MoveToContent();
+                                    while (XMLDoc.LocalName != "argument")
                                     {
-                                        case "name":
-                                            arg.Name = XMLDoc.ReadString().Trim();
-                                            break;
-                                        case "retval":
-                                            arg.IsReturnValue = true;
-                                            break;
-                                        case "direction":
-                                            arg.Direction = XMLDoc.ReadString().Trim();
-                                            break;
-                                        case "relatedStateVariable":
-                                            arg.StateVarName = XMLDoc.ReadString().Trim();
-                                            break;
+                                        switch (XMLDoc.LocalName)
+                                        {
+                                            case "name":
+                                                arg.Name = XMLDoc.ReadString().Trim();
+                                                break;
+                                            case "retval":
+                                                arg.IsReturnValue = true;
+                                                break;
+                                            case "direction":
+                                                arg.Direction = XMLDoc.ReadString().Trim();
+                                                break;
+                                            case "relatedStateVariable":
+                                                arg.StateVarName = XMLDoc.ReadString().Trim();
+                                                break;
+                                        }
+                                        XMLDoc.Read();
+                                        XMLDoc.MoveToContent();
                                     }
+                                    action.AddArgument(arg);
                                     XMLDoc.Read();
                                     XMLDoc.MoveToContent();
                                 }
-                                action.AddArgument(arg);
-                                XMLDoc.Read();
-                                XMLDoc.MoveToContent();
+                                else
+                                {
+                                    XMLDoc.Skip();
+                                }
                             }
-                            else
-                            {
-                                XMLDoc.Skip();
-                            }
-                        }
-                        break;
+                            break;
+                    }
+                    // End of Switch
+                    XMLDoc.Read();
+                    XMLDoc.MoveToContent();
                 }
-                // End of Switch
-                XMLDoc.Read();
-                XMLDoc.MoveToContent();
-            }
-            // End of While
+                // End of While
 
-            AddAction(action);
+                AddAction(action);
+            }
+            catch (Exception ex)
+            {
+                throw new XMLParsingException("Invalid Action XML", startLine + XMLDoc.LineNumber, XMLDoc.LinePosition, ex);
+            }
         }
         public byte[] GetSCPDXml()
         {
@@ -3084,15 +3167,14 @@ namespace OpenSource.UPnP
                         UPnPCustomException ce = null;
                         try
                         {
-                            ce = ParseErrorBody(response.StringBuffer);
+                            ce = ParseErrorBody(response.StringBuffer,0);
                             OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error,
                                 "UPnP Action <" + state.MethodName + "> Error [" + ce.ErrorCode.ToString() + "] " + ce.ErrorDescription);
                         }
-                        catch
+                        catch (Exception ex)
                         {
                             ce = null;
-                            OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error,
-                                "HTTP Fault invoking " + state.MethodName + " : " + response.StatusData);
+                            OpenSource.Utilities.EventLogger.Log(ex,"HTTP Fault invoking " + state.MethodName + " : " + response.StatusData);
 
                         }
                         if (state.ErrorCB != null)
@@ -3956,55 +4038,62 @@ namespace OpenSource.UPnP
 
             return (RetVal);
         }
-        private void ParseEvents(String XML)
+        private void ParseEvents(String XML, int startLine)
         {
             StringReader MyString = new StringReader(XML);
             XmlTextReader XMLDoc = new XmlTextReader(MyString);
             Hashtable TheEvents = new Hashtable();
 
-            XMLDoc.Read();
-            XMLDoc.MoveToContent();
-            if (XMLDoc.LocalName == "propertyset")
+            try
             {
                 XMLDoc.Read();
                 XMLDoc.MoveToContent();
-
-                while ((XMLDoc.LocalName != "propertyset") && (XMLDoc.EOF == false))
+                if (XMLDoc.LocalName == "propertyset")
                 {
-                    if (XMLDoc.LocalName == "property")
-                    {
-                        XMLDoc.Read();
-                        XMLDoc.MoveToContent();
-                    }
-
-                    String name = XMLDoc.LocalName;
-                    string val = XMLDoc.ReadString();
-                    //string val = UPnPStringFormatter.PartialEscapeString(XMLDoc.ReadInnerXml());
-
-                    if (StateVariables.ContainsKey(name) == true)
-                    {
-                        UPnPStateVariable var = (UPnPStateVariable)StateVariables[name];
-                        try
-                        {
-                            Object RetVal = UPnPService.CreateObjectInstance(var.GetNetType(), val);
-                            var.Value = RetVal;
-                            OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.SuccessAudit, RetVal.ToString());
-                            StateVariables[name] = var;
-                        }
-                        catch (Exception eve)
-                        {
-                            OpenSource.Utilities.EventLogger.Log(eve);
-                        }
-                    }
                     XMLDoc.Read();
                     XMLDoc.MoveToContent();
 
-                    if (XMLDoc.LocalName == "property" && !XMLDoc.IsStartElement())
+                    while ((XMLDoc.LocalName != "propertyset") && (XMLDoc.EOF == false))
                     {
+                        if (XMLDoc.LocalName == "property")
+                        {
+                            XMLDoc.Read();
+                            XMLDoc.MoveToContent();
+                        }
+
+                        String name = XMLDoc.LocalName;
+                        string val = XMLDoc.ReadString();
+                        //string val = UPnPStringFormatter.PartialEscapeString(XMLDoc.ReadInnerXml());
+
+                        if (StateVariables.ContainsKey(name) == true)
+                        {
+                            UPnPStateVariable var = (UPnPStateVariable)StateVariables[name];
+                            try
+                            {
+                                Object RetVal = UPnPService.CreateObjectInstance(var.GetNetType(), val);
+                                var.Value = RetVal;
+                                OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.SuccessAudit, RetVal.ToString());
+                                StateVariables[name] = var;
+                            }
+                            catch (Exception eve)
+                            {
+                                OpenSource.Utilities.EventLogger.Log(eve);
+                            }
+                        }
                         XMLDoc.Read();
                         XMLDoc.MoveToContent();
+
+                        if (XMLDoc.LocalName == "property" && !XMLDoc.IsStartElement())
+                        {
+                            XMLDoc.Read();
+                            XMLDoc.MoveToContent();
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new XMLParsingException("Invalid Event XML", startLine + XMLDoc.LineNumber, XMLDoc.LinePosition, ex);
             }
             return;
         }
@@ -4142,9 +4231,9 @@ namespace OpenSource.UPnP
             }
         }
 
-        internal void _TriggerEvent(String SID, long SEQ, String XML)
+        internal void _TriggerEvent(String SID, long SEQ, String XML, int startLine)
         {
-            ParseEvents(XML);
+            ParseEvents(XML,startLine);
             if (OnUPnPEvent != null) OnUPnPEvent(this, SEQ);
         }
 
@@ -4224,7 +4313,7 @@ namespace OpenSource.UPnP
             }
         }
 
-        private UPnPCustomException ParseErrorBody(String XML)
+        private UPnPCustomException ParseErrorBody(String XML, int startLine)
         {
             StringReader sr = new StringReader(XML);
             XmlTextReader XMLDoc = new XmlTextReader(sr);
@@ -4233,88 +4322,95 @@ namespace OpenSource.UPnP
             int ec = 0;
             String ed = "";
 
-            XMLDoc.Read();
-            XMLDoc.MoveToContent();
-
-            if (XMLDoc.LocalName == "Envelope")
+            try
             {
                 XMLDoc.Read();
                 XMLDoc.MoveToContent();
-                while ((XMLDoc.LocalName != "Envelope") && (XMLDoc.EOF == false))
+
+                if (XMLDoc.LocalName == "Envelope")
                 {
-                    switch (XMLDoc.LocalName)
-                    {
-                        case "Body":
-                            XMLDoc.Read();
-                            XMLDoc.MoveToContent();
-                            while ((XMLDoc.LocalName != "Body") && (XMLDoc.EOF == false))
-                            {
-                                if (XMLDoc.LocalName == "Fault")
-                                {
-                                    XMLDoc.Read();
-                                    XMLDoc.MoveToContent();
-                                    while ((XMLDoc.LocalName != "Fault") && (XMLDoc.EOF == false))
-                                    {
-                                        switch (XMLDoc.LocalName)
-                                        {
-                                            case "detail":
-                                                XMLDoc.Read();
-                                                XMLDoc.MoveToContent();
-                                                while ((XMLDoc.LocalName != "detail") && (XMLDoc.EOF == false))
-                                                {
-                                                    if (XMLDoc.LocalName == "UPnPError")
-                                                    {
-                                                        XMLDoc.Read();
-                                                        XMLDoc.MoveToContent();
-                                                        while ((XMLDoc.LocalName != "UPnPError") && (XMLDoc.EOF == false))
-                                                        {
-                                                            switch (XMLDoc.LocalName)
-                                                            {
-                                                                case "errorCode":
-                                                                    ec = int.Parse(XMLDoc.ReadString());
-                                                                    break;
-                                                                case "errorDescription":
-                                                                    ed = XMLDoc.ReadString();
-                                                                    break;
-                                                            }
-                                                            XMLDoc.Read();
-                                                            XMLDoc.MoveToContent();
-                                                        }
-
-                                                        RetVal = new UPnPCustomException(ec, ed);
-                                                    }
-                                                    else
-                                                    {
-                                                        XMLDoc.Skip();
-                                                    }
-                                                    XMLDoc.Read();
-                                                    XMLDoc.MoveToContent();
-                                                }
-                                                break;
-                                            default:
-                                                XMLDoc.Skip();
-                                                break;
-                                        }
-                                        XMLDoc.Read();
-                                        XMLDoc.MoveToContent();
-                                    }
-
-                                }
-                                else
-                                {
-                                    XMLDoc.Skip();
-                                }
-                                XMLDoc.Read();
-                                XMLDoc.MoveToContent();
-                            }
-                            break;
-                        default:
-                            XMLDoc.Skip();
-                            break;
-                    }
                     XMLDoc.Read();
                     XMLDoc.MoveToContent();
+                    while ((XMLDoc.LocalName != "Envelope") && (XMLDoc.EOF == false))
+                    {
+                        switch (XMLDoc.LocalName)
+                        {
+                            case "Body":
+                                XMLDoc.Read();
+                                XMLDoc.MoveToContent();
+                                while ((XMLDoc.LocalName != "Body") && (XMLDoc.EOF == false))
+                                {
+                                    if (XMLDoc.LocalName == "Fault")
+                                    {
+                                        XMLDoc.Read();
+                                        XMLDoc.MoveToContent();
+                                        while ((XMLDoc.LocalName != "Fault") && (XMLDoc.EOF == false))
+                                        {
+                                            switch (XMLDoc.LocalName)
+                                            {
+                                                case "detail":
+                                                    XMLDoc.Read();
+                                                    XMLDoc.MoveToContent();
+                                                    while ((XMLDoc.LocalName != "detail") && (XMLDoc.EOF == false))
+                                                    {
+                                                        if (XMLDoc.LocalName == "UPnPError")
+                                                        {
+                                                            XMLDoc.Read();
+                                                            XMLDoc.MoveToContent();
+                                                            while ((XMLDoc.LocalName != "UPnPError") && (XMLDoc.EOF == false))
+                                                            {
+                                                                switch (XMLDoc.LocalName)
+                                                                {
+                                                                    case "errorCode":
+                                                                        ec = int.Parse(XMLDoc.ReadString());
+                                                                        break;
+                                                                    case "errorDescription":
+                                                                        ed = XMLDoc.ReadString();
+                                                                        break;
+                                                                }
+                                                                XMLDoc.Read();
+                                                                XMLDoc.MoveToContent();
+                                                            }
+
+                                                            RetVal = new UPnPCustomException(ec, ed);
+                                                        }
+                                                        else
+                                                        {
+                                                            XMLDoc.Skip();
+                                                        }
+                                                        XMLDoc.Read();
+                                                        XMLDoc.MoveToContent();
+                                                    }
+                                                    break;
+                                                default:
+                                                    XMLDoc.Skip();
+                                                    break;
+                                            }
+                                            XMLDoc.Read();
+                                            XMLDoc.MoveToContent();
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        XMLDoc.Skip();
+                                    }
+                                    XMLDoc.Read();
+                                    XMLDoc.MoveToContent();
+                                }
+                                break;
+                            default:
+                                XMLDoc.Skip();
+                                break;
+                        }
+                        XMLDoc.Read();
+                        XMLDoc.MoveToContent();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new XMLParsingException("Invalid Error XML", startLine + XMLDoc.LineNumber, XMLDoc.LinePosition, ex);
             }
             return (RetVal);
         }

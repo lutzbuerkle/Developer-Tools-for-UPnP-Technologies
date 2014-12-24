@@ -743,8 +743,9 @@ namespace OpenSource.UPnP
                 if (y != null) y.Dispose();
                 WebServerTable[ip.ToString()] = null;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
             }
         }
 
@@ -777,6 +778,7 @@ namespace OpenSource.UPnP
             catch (SocketException ex)
             {
                 // Cannot bind to this IPAddress, so just ignore
+                OpenSource.Utilities.EventLogger.Log(ex);
                 OpenSource.Utilities.EventLogger.Log(ex, "UPnPDevice: " + this.FriendlyName + " @" + ip.ToString());
                 //				System.Windows.Forms.MessageBox.Show(ex.ToString(),"UPnPDevice: " + this.FriendlyName+" @"+ip.ToString());
             }
@@ -1001,8 +1003,9 @@ namespace OpenSource.UPnP
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
             }
 
             if ((H_cb != null) || (P_cb != null))
@@ -1041,7 +1044,7 @@ namespace OpenSource.UPnP
                             Response.StatusData = "OK";
                             WebSession.Send(Response);
 
-                            Services[id]._TriggerEvent(msg.GetTag("SID"), long.Parse(msg.GetTag("SEQ")), msg.StringBuffer);
+                            Services[id]._TriggerEvent(msg.GetTag("SID"), long.Parse(msg.GetTag("SEQ")), msg.StringBuffer, 0);
                             break;
                         }
                         //						}
@@ -1089,6 +1092,7 @@ namespace OpenSource.UPnP
                 }
                 catch (UPnPCustomException ce)
                 {
+                    OpenSource.Utilities.EventLogger.Log(ce);
                     Response.StatusCode = ce.ErrorCode;
                     Response.StatusData = ce.ErrorDescription;
                     WebSession.Send(Response);
@@ -1096,6 +1100,7 @@ namespace OpenSource.UPnP
                 }
                 catch (Exception e)
                 {
+                    OpenSource.Utilities.EventLogger.Log(e);
                     Response.StatusCode = 500;
                     Response.StatusData = "Internal";
                     Response.StringBuffer = e.ToString();
@@ -1114,8 +1119,9 @@ namespace OpenSource.UPnP
                 {
                     Response = Post(MethodData, msg.StringBuffer, msg.GetTag("SOAPACTION"), WebSession);
                 }
-                catch (DelayedResponseException)
+                catch (DelayedResponseException ex)
                 {
+                    OpenSource.Utilities.EventLogger.Log(ex);
                     InvokerInfo.Remove(Thread.CurrentThread.GetHashCode());
                     WebSession.StopReading();
                     return;
@@ -1153,6 +1159,7 @@ namespace OpenSource.UPnP
                 }
                 catch (UPnPTypeMismatchException tme)
                 {
+                    OpenSource.Utilities.EventLogger.Log(tme);
                     Response.StatusCode = 500;
                     Response.StatusData = "Internal";
                     Response.StringBuffer = BuildErrorBody(new UPnPCustomException(402, tme.Message));
@@ -1162,6 +1169,7 @@ namespace OpenSource.UPnP
                 }
                 catch (UPnPStateVariable.OutOfRangeException oor)
                 {
+                    OpenSource.Utilities.EventLogger.Log(oor);
                     Response.StatusCode = 500;
                     Response.StatusData = "Internal";
                     Response.StringBuffer = BuildErrorBody(new UPnPCustomException(402, oor.Message));
@@ -1172,6 +1180,7 @@ namespace OpenSource.UPnP
                 catch (System.Reflection.TargetInvocationException tie)
                 {
                     Exception inner = tie.InnerException;
+                    OpenSource.Utilities.EventLogger.Log(tie);
                     while (inner.InnerException != null && (typeof(UPnPCustomException).IsInstanceOfType(inner) == false))
                     {
                         inner = inner.InnerException;
@@ -1245,6 +1254,7 @@ namespace OpenSource.UPnP
                     }
                     catch (Exception s_exception)
                     {
+                        OpenSource.Utilities.EventLogger.Log(s_exception);
                         HTTPMessage err = new HTTPMessage();
                         err.StatusCode = 500;
                         err.StatusData = s_exception.Message;
@@ -1387,8 +1397,9 @@ namespace OpenSource.UPnP
                 msg.BodyBuffer = buffer;
                 return (msg);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 throw (new UPnPCustomException(404, "File Not Found"));
             }
         }
@@ -1436,8 +1447,9 @@ namespace OpenSource.UPnP
                     SR.RemoteEndPoint = src;
                     SSDPServer.UnicastData(SR);
                 }
-                catch (SocketException)
+                catch (SocketException ex)
                 {
+                    OpenSource.Utilities.EventLogger.Log(ex);
                 }
             }
         }
@@ -1468,8 +1480,9 @@ namespace OpenSource.UPnP
                     temp = temp.Substring(temp.IndexOf("<") + 1);
                     TList.Add(new Uri(temp));
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    OpenSource.Utilities.EventLogger.Log(ex);
                 }
             }
             Uri[] RetVal = new Uri[TList.Count];
@@ -1994,8 +2007,9 @@ namespace OpenSource.UPnP
             {
                 localep = ((MiniWebServer)WebServerTable[local.ToString()]).LocalIPEndPoint;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 return (new HTTPMessage[0]);
             }
             String BaseURL;
@@ -2160,9 +2174,48 @@ namespace OpenSource.UPnP
         {
             return(Parse(XML,null));
         }*/
+        static internal String highlightError(String original, int line, int charPosition)
+        {
+            int i,j,k;
+            original = original.Replace("\r\n","\r");  // Clean up any CRLF nonesense
+            original = original.Replace("\n","\r");
+            String[] sarr = original.Split(new char[] {'\r'});
+            string[] sarr2 = new String[sarr.Length + 1];
+            for (i=0, j=0; i < sarr.Length; ++i, ++j)
+            {
+                if (i + 1 == line)
+                {
+                    sarr2[j] = "--->" + sarr[i];
+                    j++;
+                    sarr2[j] = "    ";
+                    if (charPosition > sarr[i].Length)
+                    {
+                        charPosition = sarr[i].Length + 1;    // Strange case. Point the carret one spot beyond the last character
+                    }
+                    for (k = 1; k < charPosition; ++k)
+                    {
+                        sarr2[j] += " ";
+                    }
+                    sarr2[j] += "^";
+                }
+                else
+                {
+                    sarr2[j] = "    " + sarr[i];
+                }
+            }
+            if (i == j)
+            {
+                sarr2[j] = "--->?";
+            }
+            String result = String.Join("\r",sarr2) + "\r";
+            result = result.Replace("\r","\r\n");
+            return(result);
+        }
+
         static internal UPnPDevice Parse(String XML, Uri source, IPAddress Intfce)
         {
             bool Skipping;
+            int embeddedLine = 0;
             //PlugFest HeaderChange
             string AssumedBaseURL = source.AbsoluteUri;
             AssumedBaseURL = AssumedBaseURL.Substring(0, AssumedBaseURL.LastIndexOf("/"));
@@ -2180,303 +2233,353 @@ namespace OpenSource.UPnP
             {
                 XMLDoc.Read();
                 XMLDoc.MoveToContent();
-            }
-            catch
-            {
-                return (null);
-            }
-            if (XMLDoc.LocalName == "root")
-            {
-                XMLDoc.Read();
-                XMLDoc.MoveToContent();
 
-                while ((XMLDoc.LocalName != "root") && (XMLDoc.EOF == false))
+                if (XMLDoc.LocalName == "root")
                 {
-                    Skipping = false;
-                    switch (XMLDoc.LocalName)
-                    {
-                        case "specVersion":
-                            XMLDoc.Read();
-                            XMLDoc.MoveToContent();
+                    XMLDoc.Read();
+                    XMLDoc.MoveToContent();
 
-                            //ToDo: This is supposed to be Arch_Major and Arch_Minor
-                            RetVal.Arch_Major = int.Parse(XMLDoc.ReadString());
-                            XMLDoc.Read();
-                            XMLDoc.MoveToContent();
-                            RetVal.Arch_Minor = int.Parse(XMLDoc.ReadString());
-
-                            XMLDoc.Read();
-                            XMLDoc.MoveToContent();
-                            break;
-                        case "URLBase":
-                            RetVal.BaseURL = new Uri(XMLDoc.ReadString());
-                            break;
-                        case "device":
-                            if (RetVal.BaseURL == null)
-                            {
-                                NeedParseDevice = true;
-                                NeedParseDeviceString = XMLDoc.ReadOuterXml();
-                            }
-                            else
-                            {
-                                ParseDevice("<device>\r\n" + XMLDoc.ReadInnerXml() + "</device>", ref RetVal);
-                            }
-                            break;
-                        default:
-                            XMLDoc.Skip();
-                            Skipping = true;
-                            break;
-                    }
-                    if (Skipping == false)
+                    while ((XMLDoc.LocalName != "root") && (XMLDoc.EOF == false))
                     {
-                        XMLDoc.Read();
-                        // XMLDoc.MoveToContent();	
+                        Skipping = false;
+                        switch (XMLDoc.LocalName)
+                        {
+                            case "specVersion":
+                                XMLDoc.Read();
+                                XMLDoc.MoveToContent();
+
+                                //ToDo: This is supposed to be Arch_Major and Arch_Minor
+                                RetVal.Arch_Major = int.Parse(XMLDoc.ReadString());
+                                XMLDoc.Read();
+                                XMLDoc.MoveToContent();
+                                RetVal.Arch_Minor = int.Parse(XMLDoc.ReadString());
+
+                                XMLDoc.Read();
+                                XMLDoc.MoveToContent();
+                                break;
+                            case "URLBase":
+                                RetVal.BaseURL = new Uri(XMLDoc.ReadString());
+                                break;
+                            case "device":
+                                embeddedLine = XMLDoc.LineNumber;
+                                if (RetVal.BaseURL == null)
+                                {
+                                    NeedParseDevice = true;
+                                    NeedParseDeviceString = XMLDoc.ReadOuterXml();
+                                }
+                                else
+                                {
+                                    //ParseDevice("<device>\r\n" + XMLDoc.ReadInnerXml() + "</device>", embeddedLine, ref RetVal);
+                                    ParseDevice(XMLDoc.ReadOuterXml(), embeddedLine-1, ref RetVal);
+                                }
+                                break;
+                            default:
+                                XMLDoc.Skip();
+                                Skipping = true;
+                                break;
+                        }
+                        if (Skipping == false)
+                        {
+                            XMLDoc.Read();
+                            // XMLDoc.MoveToContent();	
+                        }
                     }
+                    if (NeedParseDevice == true)
+                    {
+                        if (RetVal.BaseURL == null)
+                        {
+                            RetVal.BaseURL = new Uri(AssumedBaseURL);
+                            // RetVal.BaseURL = new Uri("http://127.0.0.1/");
+                        }
+                        ParseDevice(NeedParseDeviceString, embeddedLine-1, ref RetVal);
+                    }
+                    return (RetVal);
                 }
-                if (NeedParseDevice == true)
+                else
                 {
-                    if (RetVal.BaseURL == null)
-                    {
-                        RetVal.BaseURL = new Uri(AssumedBaseURL);
-                        // RetVal.BaseURL = new Uri("http://127.0.0.1/");
-                    }
-                    ParseDevice(NeedParseDeviceString, ref RetVal);
+                    return (null);
                 }
-                return (RetVal);
             }
-            else
+            catch (XMLParsingException ex)
             {
-                return (null);
+                OpenSource.Utilities.EventLogger.Log(ex,"\r\nLine: " + ex.line.ToString() + 
+                                    ", Position: " + ex.position.ToString() +
+                                    "\r\nURL: " + source + "\r\nXML:\r\n" + highlightError(XML,ex.line,ex.position));
             }
-
+            catch (Exception ex)
+            {
+                OpenSource.Utilities.EventLogger.Log(ex, "Invalid UPnP Device Description\r\nLine " + (XMLDoc.LineNumber).ToString() +
+                                    ", Position " + XMLDoc.LinePosition.ToString() +
+                                    "\r\nURL: " + source + "\r\nXML:\r\n" + highlightError(XML, XMLDoc.LineNumber, XMLDoc.LinePosition));
+            }
+            return (null);
         }
 
-        static private void ParseDeviceList(String XML, ref UPnPDevice RetVal)
+        static private void ParseDeviceList(String XML, int startLine, ref UPnPDevice RetVal)
         {
             StringReader MyString = new StringReader(XML);
             XmlTextReader XMLDoc = new XmlTextReader(MyString);
             UPnPDevice EmbeddedDevice = null;
+            int embededLine;
 
-            XMLDoc.Read();
-            XMLDoc.MoveToContent();
-
-            if (XMLDoc.LocalName == "deviceList")
+            try
             {
                 XMLDoc.Read();
                 XMLDoc.MoveToContent();
 
-                while (XMLDoc.LocalName != "deviceList" && !XMLDoc.EOF)
+                if (XMLDoc.LocalName == "deviceList")
                 {
-                    if (XMLDoc.LocalName == "device")
+                    XMLDoc.Read();
+                    XMLDoc.MoveToContent();
+
+                    while (XMLDoc.LocalName != "deviceList" && !XMLDoc.EOF)
                     {
-                        EmbeddedDevice = new UPnPDevice();
-                        EmbeddedDevice.IsRoot = false;
-                        EmbeddedDevice.BaseURL = RetVal.BaseURL;
-                        ParseDevice("<device>\r\n" + XMLDoc.ReadInnerXml() + "</device>", ref EmbeddedDevice);
-                        RetVal.AddDevice(EmbeddedDevice);
-                    }
-                    if (!XMLDoc.IsStartElement() && XMLDoc.LocalName != "deviceList")
-                    {
-                        XMLDoc.Read();
-                        XMLDoc.MoveToContent();
+                        if (XMLDoc.LocalName == "device")
+                        {
+                            EmbeddedDevice = new UPnPDevice();
+                            EmbeddedDevice.IsRoot = false;
+                            EmbeddedDevice.BaseURL = RetVal.BaseURL;
+                            embededLine = XMLDoc.LineNumber;
+                            //ParseDevice("<device>\r\n" + XMLDoc.ReadInnerXml() + "</device>", startLine + embededLine, ref EmbeddedDevice);
+                            ParseDevice(XMLDoc.ReadOuterXml(), startLine + embededLine, ref EmbeddedDevice);
+                            RetVal.AddDevice(EmbeddedDevice);
+                        }
+                        if (!XMLDoc.IsStartElement() && XMLDoc.LocalName != "deviceList")
+                        {
+                            XMLDoc.Read();
+                            XMLDoc.MoveToContent();
+                        }
                     }
                 }
             }
+            catch (XMLParsingException ex)
+            {
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                throw new XMLParsingException("Invalid DeviceList XML near line ", (startLine + XMLDoc.LineNumber),XMLDoc.LinePosition, ex);
+            }
         }
-        static private void ParseDevice(String XML, ref UPnPDevice RetVal)
+        static private void ParseDevice(String XML, int startLine, ref UPnPDevice RetVal)
         {
             string TempString;
             UPnPService service;
+            int embeddedLine;
             DText p = new DText();
             TextReader MyString = new StringReader(XML);
             XmlTextReader XMLDoc = new XmlTextReader(MyString);
 
-            XMLDoc.Read();
-            XMLDoc.MoveToContent();
-
-            if (XMLDoc.LocalName == "device")
+            try
             {
-                if (XMLDoc.AttributeCount > 0)
+                XMLDoc.Read();
+                XMLDoc.MoveToContent();
+
+                if (XMLDoc.LocalName == "device")
                 {
-                    for (int ax = 0; ax < XMLDoc.AttributeCount; ++ax)
+                    if (XMLDoc.AttributeCount > 0)
                     {
-                        XMLDoc.MoveToAttribute(ax);
-                        if (XMLDoc.LocalName == "MaxVersion")
+                        for (int ax = 0; ax < XMLDoc.AttributeCount; ++ax)
                         {
-                            RetVal.SetVersion(XMLDoc.Value);
-                        }
-                    }
-                    XMLDoc.MoveToContent();
-                    XMLDoc.Read();
-                }
-                else
-                {
-                    XMLDoc.Read();
-                    XMLDoc.MoveToContent();
-                }
-
-                while (XMLDoc.LocalName != "device" && !XMLDoc.EOF)
-                {
-                    switch (XMLDoc.LocalName)
-                    {
-                        case "deviceList":
-                            ParseDeviceList(XMLDoc.ReadOuterXml(), ref RetVal);
-                            break;
-                        case "URLBase":
-                            // Here, tport is a hack to make Windows Home Server visible. WHS does no set the port in the BaseURL and so, you need to keep it from the SSDP message.
-                            int tport = 80;
-                            if (RetVal.BaseURL != null) tport = RetVal.BaseURL.Port;
-                            RetVal.BaseURL = new Uri(XMLDoc.ReadString());
-                            if (RetVal.BaseURL.Port == 80 && RetVal.BaseURL.Port != tport) RetVal.BaseURL = new Uri(RetVal.BaseURL.Scheme + "://" + RetVal.BaseURL.Host + ":" + tport + RetVal.BaseURL.AbsolutePath);
-                            break;
-                        case "deviceType":
-                            RetVal.DeviceURN = XMLDoc.ReadString();
-                            break;
-                        case "friendlyName":
-                            RetVal.FriendlyName = XMLDoc.ReadString();
-                            break;
-                        case "manufacturer":
-                            RetVal.Manufacturer = XMLDoc.ReadString();
-                            break;
-                        case "manufacturerURL":
-                            RetVal.ManufacturerURL = XMLDoc.ReadString();
-                            break;
-                        case "modelDescription":
-                            RetVal.ModelDescription = XMLDoc.ReadString();
-                            break;
-                        case "modelName":
-                            RetVal.ModelName = XMLDoc.ReadString();
-                            break;
-                        case "modelNumber":
-                            RetVal.ModelNumber = XMLDoc.ReadString();
-                            break;
-                        case "modelURL":
-                            try
+                            XMLDoc.MoveToAttribute(ax);
+                            if (XMLDoc.LocalName == "MaxVersion")
                             {
-                                string u = XMLDoc.ReadString();
-                                if (Uri.TryCreate(u, UriKind.Absolute, out RetVal.ModelURL) == false) { Uri.TryCreate("http://" + u, UriKind.Absolute, out RetVal.ModelURL); }
+                                RetVal.SetVersion(XMLDoc.Value);
                             }
-                            catch { }
-                            break;
-                        case "serialNumber":
-                            RetVal.SerialNumber = XMLDoc.ReadString();
-                            break;
-                        case "UDN":
-                            TempString = XMLDoc.ReadString();
-                            RetVal.UniqueDeviceName = TempString.Substring(5);
-                            break;
-                        case "UPC":
-                            RetVal.ProductCode = XMLDoc.ReadString();
-                            break;
-                        case "presentationURL":
-                            RetVal.HasPresentation = true;
-                            RetVal.PresentationURL = XMLDoc.ReadString();
-                            break;
-                        case "serviceList":
-                            if (XMLDoc.IsEmptyElement) break;
+                        }
+                        XMLDoc.MoveToContent();
+                        XMLDoc.Read();
+                    }
+                    else
+                    {
+                        XMLDoc.Read();
+                        XMLDoc.MoveToContent();
+                    }
 
-                            XMLDoc.Read();
-                            XMLDoc.MoveToContent();
-                            while (XMLDoc.LocalName != "serviceList")
-                            {
-                                if (XMLDoc.LocalName == "service")
+                    while (XMLDoc.LocalName != "device" && !XMLDoc.EOF)
+                    {
+                        switch (XMLDoc.LocalName)
+                        {
+                            case "deviceList":
+                                embeddedLine = XMLDoc.LineNumber;
+                                ParseDeviceList(XMLDoc.ReadOuterXml(), startLine + embeddedLine-1, ref RetVal);
+                                break;
+                            case "URLBase":
+                                // Here, tport is a hack to make Windows Home Server visible. WHS does no set the port in the BaseURL and so, you need to keep it from the SSDP message.
+                                int tport = 80;
+                                if (RetVal.BaseURL != null) tport = RetVal.BaseURL.Port;
+                                RetVal.BaseURL = new Uri(XMLDoc.ReadString());
+                                if (RetVal.BaseURL.Port == 80 && RetVal.BaseURL.Port != tport) RetVal.BaseURL = new Uri(RetVal.BaseURL.Scheme + "://" + RetVal.BaseURL.Host + ":" + tport + RetVal.BaseURL.AbsolutePath);
+                                break;
+                            case "deviceType":
+                                RetVal.DeviceURN = XMLDoc.ReadString();
+                                break;
+                            case "friendlyName":
+                                RetVal.FriendlyName = XMLDoc.ReadString();
+                                break;
+                            case "manufacturer":
+                                RetVal.Manufacturer = XMLDoc.ReadString();
+                                break;
+                            case "manufacturerURL":
+                                RetVal.ManufacturerURL = XMLDoc.ReadString();
+                                break;
+                            case "modelDescription":
+                                RetVal.ModelDescription = XMLDoc.ReadString();
+                                break;
+                            case "modelName":
+                                RetVal.ModelName = XMLDoc.ReadString();
+                                break;
+                            case "modelNumber":
+                                RetVal.ModelNumber = XMLDoc.ReadString();
+                                break;
+                            case "modelURL":
+                                try
                                 {
-                                    service = UPnPService.Parse(XMLDoc.ReadOuterXml());
-                                    RetVal.AddService(service);
+                                    string u = XMLDoc.ReadString();
+                                    if (Uri.TryCreate(u, UriKind.Absolute, out RetVal.ModelURL) == false) { Uri.TryCreate("http://" + u, UriKind.Absolute, out RetVal.ModelURL); }
                                 }
-                                if (!XMLDoc.IsStartElement())
+                                catch (Exception ex)
                                 {
-                                    if (XMLDoc.LocalName != "serviceList")
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
+                                break;
+                            case "serialNumber":
+                                RetVal.SerialNumber = XMLDoc.ReadString();
+                                break;
+                            case "UDN":
+                                TempString = XMLDoc.ReadString();
+                                RetVal.UniqueDeviceName = TempString.Substring(5);
+                                break;
+                            case "UPC":
+                                RetVal.ProductCode = XMLDoc.ReadString();
+                                break;
+                            case "presentationURL":
+                                RetVal.HasPresentation = true;
+                                RetVal.PresentationURL = XMLDoc.ReadString();
+                                break;
+                            case "serviceList":
+                                if (XMLDoc.IsEmptyElement) break;
+
+                                XMLDoc.Read();
+                                XMLDoc.MoveToContent();
+                                while (XMLDoc.LocalName != "serviceList")
+                                {
+                                    if (XMLDoc.LocalName == "service")
                                     {
-                                        XMLDoc.Read();
-                                        XMLDoc.MoveToContent();
+                                        embeddedLine = XMLDoc.LineNumber;
+                                        service = UPnPService.Parse(XMLDoc.ReadOuterXml(), embeddedLine-1+startLine);
+                                        RetVal.AddService(service);
+                                    }
+                                    if (!XMLDoc.IsStartElement())
+                                    {
+                                        if (XMLDoc.LocalName != "serviceList")
+                                        {
+                                            XMLDoc.Read();
+                                            XMLDoc.MoveToContent();
+                                        }
                                     }
                                 }
-                            }
-                            break;
-                        case "iconList":
-                            bool finishedIconList = false;
-                            while (!finishedIconList && XMLDoc.Read())
-                            {
-                                switch (XMLDoc.NodeType)
+                                break;
+                            case "iconList":
+                                bool finishedIconList = false;
+                                while (!finishedIconList && XMLDoc.Read())
                                 {
-                                    case XmlNodeType.Element:
-                                        if (XMLDoc.LocalName == "icon")
-                                        {
-                                            ParseIconXML(RetVal, XMLDoc.ReadOuterXml());
-                                            if (XMLDoc.NodeType == XmlNodeType.EndElement && XMLDoc.LocalName == "iconList") { finishedIconList = true; }
-                                        }
-                                        break;
-                                    case XmlNodeType.EndElement:
-                                        if (XMLDoc.LocalName == "iconList") { finishedIconList = true; }
-                                        break;
+                                    switch (XMLDoc.NodeType)
+                                    {
+                                        case XmlNodeType.Element:
+                                            if (XMLDoc.LocalName == "icon")
+                                            {
+                                                embeddedLine = XMLDoc.LineNumber;
+                                                ParseIconXML(RetVal, startLine + embeddedLine-1, XMLDoc.ReadOuterXml());
+                                                if (XMLDoc.NodeType == XmlNodeType.EndElement && XMLDoc.LocalName == "iconList") { finishedIconList = true; }
+                                            }
+                                            break;
+                                        case XmlNodeType.EndElement:
+                                            if (XMLDoc.LocalName == "iconList") { finishedIconList = true; }
+                                            break;
+                                    }
                                 }
-                            }
-                            break;
-                        default:
-                            if (XMLDoc.LocalName != "")
-                            {
-                                string customPrefix = XMLDoc.Prefix;
-                                string customFieldName = XMLDoc.LocalName;
-                                string customFieldNamespace = XMLDoc.LookupNamespace(customPrefix);
-                                string customFieldVal = XMLDoc.ReadInnerXml();
-                                RetVal.AddCustomFieldInDescription(customFieldName, customFieldVal, customFieldNamespace);
-                            }
-                            else
-                            {
-                                XMLDoc.Skip();
-                            }
-                            continue;
-                    }
+                                break;
+                            default:
+                                if (XMLDoc.LocalName != "")
+                                {
+                                    string customPrefix = XMLDoc.Prefix;
+                                    string customFieldName = XMLDoc.LocalName;
+                                    string customFieldNamespace = XMLDoc.LookupNamespace(customPrefix);
+                                    string customFieldVal = XMLDoc.ReadInnerXml();
+                                    RetVal.AddCustomFieldInDescription(customFieldName, customFieldVal, customFieldNamespace);
+                                }
+                                else
+                                {
+                                    XMLDoc.Skip();
+                                }
+                                continue;
+                        }
 
-                    XMLDoc.Read();
-                    //XMLDoc.MoveToContent();
+                        XMLDoc.Read();
+                        //XMLDoc.MoveToContent();
+                    }
                 }
+            }
+            catch (XMLParsingException ex)
+            {
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                throw new XMLParsingException("Invalid Device XML", startLine + XMLDoc.LineNumber, XMLDoc.LinePosition, ex);
             }
         }
 
-        private static void ParseIconXML(UPnPDevice d, String XML)
+        private static void ParseIconXML(UPnPDevice d, int startLine, String XML)
         {
             StringReader MyString = new StringReader(XML);
             XmlTextReader XMLDoc = new XmlTextReader(MyString);
             String iurl = null;
 
-            XMLDoc.Read();
-            XMLDoc.MoveToContent();
-
-            if (XMLDoc.LocalName == "icon")
+            try
             {
                 XMLDoc.Read();
                 XMLDoc.MoveToContent();
-                while (XMLDoc.LocalName != "icon")
+
+                if (XMLDoc.LocalName == "icon")
                 {
-                    if (XMLDoc.LocalName == "url")
-                    {
-                        iurl = XMLDoc.ReadString();
-                    }
-                    else
-                    {
-                        XMLDoc.Skip();
-                    }
                     XMLDoc.Read();
                     XMLDoc.MoveToContent();
+                    while (XMLDoc.LocalName != "icon")
+                    {
+                        if (XMLDoc.LocalName == "url")
+                        {
+                            iurl = XMLDoc.ReadString();
+                        }
+                        else
+                        {
+                            XMLDoc.Skip();
+                        }
+                        XMLDoc.Read();
+                        XMLDoc.MoveToContent();
+                    }
+                }
+
+                if (iurl != null && d.BaseURL != null)
+                {
+                    if (iurl.ToUpper().StartsWith("HTTP://") == false)
+                    {
+                        if (iurl.StartsWith("/") == true)
+                        {
+                            iurl = "http://" + d.BaseURL.Host + ":" + d.BaseURL.Port.ToString() + iurl;
+                        }
+                        else
+                        {
+                            iurl = HTTPMessage.UnEscapeString(d.BaseURL.AbsoluteUri + iurl);
+                        }
+                    }
+                    d.FetchIcon(new Uri(iurl));
                 }
             }
-
-            if (iurl != null && d.BaseURL != null)
+            catch (Exception ex)
             {
-                if (iurl.ToUpper().StartsWith("HTTP://") == false)
-                {
-                    if (iurl.StartsWith("/") == true)
-                    {
-                        iurl = "http://" + d.BaseURL.Host + ":" + d.BaseURL.Port.ToString() + iurl;
-                    }
-                    else
-                    {
-                        iurl = HTTPMessage.UnEscapeString(d.BaseURL.AbsoluteUri + iurl);
-                    }
-                }
-                d.FetchIcon(new Uri(iurl));
+                throw new Exception("Invalid icon XML near line " + (startLine + XMLDoc.LineNumber).ToString() + ", Position " + XMLDoc.LinePosition.ToString(), ex);
             }
         }
 
@@ -2773,7 +2876,7 @@ namespace OpenSource.UPnP
             string s = System.Text.UTF8Encoding.UTF8.GetString(b);
             UPnPDevice d = new UPnPDevice();
             d.BaseURL = new Uri("http://127.0.0.1/");
-            UPnPDevice.ParseDevice(s, ref d);
+            UPnPDevice.ParseDevice(s, 0, ref d);
             return true;
         }
     }

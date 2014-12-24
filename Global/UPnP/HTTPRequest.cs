@@ -149,8 +149,9 @@ namespace OpenSource.UPnP
             {
                 this.s.Close();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
             }
         }
 
@@ -196,9 +197,10 @@ namespace OpenSource.UPnP
             {
                 e = Dns.EndGetHostEntry(result);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Could not resolve?
+                OpenSource.Utilities.EventLogger.Log(ex);
                 return;
             }
 
@@ -299,8 +301,10 @@ namespace OpenSource.UPnP
                                 s.Send(pr);
                             }
                         }
-                        catch (Exception)
-                        { }
+                        catch (Exception ex)
+                        {
+                            OpenSource.Utilities.EventLogger.Log(ex);
+                        }
                     }
                 }
             }
@@ -444,8 +448,10 @@ namespace OpenSource.UPnP
                                 ss.Send(pr);
                             }
                         }
-                        catch (Exception)
-                        { }
+                        catch (Exception ex)
+                        {
+                            OpenSource.Utilities.EventLogger.Log(ex);
+                        }
                     }
                 }
             }

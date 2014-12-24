@@ -168,6 +168,7 @@ namespace OpenSource.UPnP
                     }
                     catch (Exception ex)
                     {
+                        OpenSource.Utilities.EventLogger.Log(ex);
                         ex.Data["v-success"] = success;
                         ex.Data["v-tag"] = tag;
                         ex.Data["v-url"] = url;
@@ -194,12 +195,15 @@ namespace OpenSource.UPnP
                     {
                         try
                         {
-                            ((UPnPService)tag).ParseSCPD(html);
+                            ((UPnPService)tag).ParseSCPD(html, 0);
                         }
                         catch (Exception e)
                         {
-                            OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error, "Invalid SCPD XML on device:\r\n   Friendly: " + this.TempDevice.FriendlyName + "\r\n   Service: " + ((UPnPService)tag).ServiceURN + "\r\n   @" + TempDevice.LocationURL);
-                            OpenSource.Utilities.EventLogger.Log(e);
+                            OpenSource.Utilities.EventLogger.Log(e, "Invalid SCPD XML on device:\r\n   Friendly: " + this.TempDevice.FriendlyName +
+                                                                    "\r\n   Service: " + ((UPnPService)tag).ServiceURN +
+                                                                    "\r\n   URL: " + url +
+                                                                    "\r\n   XML:\r\n" + html + 
+                                                                    "\r\n");
                             return;
                         }
 
@@ -219,17 +223,17 @@ namespace OpenSource.UPnP
                 {
                     TempDevice = UPnPDevice.Parse(html, new Uri(url), localaddr);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error, "Invalid Device Description XML @" + url);
-                    if (OnFailed2 != null) OnFailed2(this, new Uri(url), new Exception("Invalid Device Description XML @" + url), expected_usn);
+                    OpenSource.Utilities.EventLogger.Log(ex, "UPnP Device Description XML parsing exception: URL=" + url);
+                    if (OnFailed2 != null) OnFailed2(this, new Uri(url), new Exception("UPnP Device Description XML parsing exception: URL=" + url), expected_usn);
                     if (TempDevice != null) TempDevice = null;
                     return;
                 }
                 if (TempDevice == null)
                 {
-                    OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error, "Invalid Device Description XML @" + url);
-                    if (OnFailed2 != null) OnFailed2(this, new Uri(url), new Exception("Invalid Device Description XML @" + url), expected_usn);
+                    //OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error, "Invalid UPnP Device Description: URL=" + url);
+                    if (OnFailed2 != null) OnFailed2(this, new Uri(url), new Exception("Invalid UPnP Device Description XML @" + url), expected_usn);
                     if (TempDevice != null) TempDevice = null;
                     return;
                 }
@@ -264,6 +268,7 @@ namespace OpenSource.UPnP
                 ex.Data["v-tag"] = tag;
                 ex.Data["v-url"] = url;
                 ex.Data["v-data"] = data;
+                OpenSource.Utilities.EventLogger.Log(ex);
                 OpenSource.UPnP.AutoUpdate.ReportCrash(System.Windows.Forms.Application.ProductName, ex);
             }
         }

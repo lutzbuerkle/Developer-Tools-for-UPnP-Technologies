@@ -239,7 +239,10 @@ namespace OpenSource.UPnP
                     return;
                 }
             }
-            catch (Exception) { }
+            catch (Exception ex) 
+            {
+                OpenSource.Utilities.EventLogger.Log(ex);
+            }
             IPEndPoint local = (IPEndPoint)client.Client.LocalEndPoint;
             SSDPSessions.Remove(local.Address);
         }
@@ -252,8 +255,9 @@ namespace OpenSource.UPnP
             {
                 msg = HTTPMessage.ParseByteArray(buffer, 0, buffer.Length);
             }
-            catch
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 msg = new HTTPMessage();
                 msg.Directive = "---";
                 msg.DirectiveObj = "---";

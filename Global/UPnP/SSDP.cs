@@ -141,21 +141,33 @@ namespace OpenSource.UPnP
                             {
                                 UdpClient session = new UdpClient(AddressFamily.InterNetwork);
                                 try { session.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true); }
-                                catch (SocketException) { }
+                                catch (SocketException ex) 
+                                {
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
                                 try { session.ExclusiveAddressUse = false; }
-                                catch (SocketException) { }
+                                catch (SocketException ex) 
+                                {
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
                                 if (!Utils.IsMono()) session.Client.Bind(new IPEndPoint(addr, 1900)); else session.Client.Bind(new IPEndPoint(IPAddress.Any, 1900));
                                 session.EnableBroadcast = true;
                                 session.JoinMulticastGroup(Utils.UpnpMulticastV4Addr, addr);
                                 try { session.Client.IOControl(SIO_UDP_CONNRESET, inValue, outValue); }
-                                catch (SocketException) { }
+                                catch (SocketException ex) 
+                                {
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
                                 session.BeginReceive(new AsyncCallback(OnReceiveSink), new object[2] { session, new IPEndPoint(addr, ((IPEndPoint)session.Client.LocalEndPoint).Port) });
                                 sessions[addr] = session;
 
                                 UdpClient usession = new UdpClient(AddressFamily.InterNetwork);
                                 usession.Client.Bind(new IPEndPoint(addr, 0));
                                 try { usession.Client.IOControl(SIO_UDP_CONNRESET, inValue, outValue); }
-                                catch (SocketException) { }
+                                catch (SocketException ex) 
+                                {
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
                                 usession.BeginReceive(new AsyncCallback(OnReceiveSink), new object[2] { usession, new IPEndPoint(addr, ((IPEndPoint)session.Client.LocalEndPoint).Port) });
                                 usessions[addr] = usession;
                             }
@@ -164,26 +176,41 @@ namespace OpenSource.UPnP
                             {
                                 UdpClient session = new UdpClient(AddressFamily.InterNetworkV6);
                                 try { session.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true); }
-                                catch (SocketException) { }
+                                catch (SocketException ex) 
+                                {
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
                                 try { session.ExclusiveAddressUse = false; }
-                                catch (SocketException) { }
+                                catch (SocketException ex)
+                                {
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
                                 if (!Utils.IsMono()) session.Client.Bind(new IPEndPoint(addr, 1900)); else session.Client.Bind(new IPEndPoint(IPAddress.IPv6Any, 1900));
                                 session.EnableBroadcast = true;
                                 if (addr.IsIPv6LinkLocal) session.JoinMulticastGroup((int)addr.ScopeId, Utils.UpnpMulticastV6Addr2); else session.JoinMulticastGroup((int)addr.ScopeId, Utils.UpnpMulticastV6Addr1);
                                 try { session.Client.IOControl(SIO_UDP_CONNRESET, inValue, outValue); }
-                                catch (SocketException) { }
+                                catch (SocketException ex)
+                                {
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
                                 session.BeginReceive(new AsyncCallback(OnReceiveSink), new object[2] { session, new IPEndPoint(addr, ((IPEndPoint)session.Client.LocalEndPoint).Port) });
                                 sessions[addr] = session;
 
                                 UdpClient usession = new UdpClient(AddressFamily.InterNetworkV6);
                                 usession.Client.Bind(new IPEndPoint(addr, 0));
                                 try { usession.Client.IOControl(SIO_UDP_CONNRESET, inValue, outValue); }
-                                catch (SocketException) { }
+                                catch (SocketException ex)
+                                {
+                                    OpenSource.Utilities.EventLogger.Log(ex);
+                                }
                                 usession.BeginReceive(new AsyncCallback(OnReceiveSink), new object[2] { usession, new IPEndPoint(addr, ((IPEndPoint)session.Client.LocalEndPoint).Port) });
                                 usessions[addr] = usession;
                             }
                         }
-                        catch (SocketException) { } // Sometimes the bind will thru an exception. In this case, we want to skip that interface and move on.
+                        catch (SocketException ex)
+                        {
+                            OpenSource.Utilities.EventLogger.Log(ex);
+                        } // Sometimes the bind will thru an exception. In this case, we want to skip that interface and move on.
                     }
                 }
             }
@@ -210,11 +237,15 @@ namespace OpenSource.UPnP
                         ProcessPacket(Packet, Packet.RemoteEndPoint, local);
                     }
                 }
-                catch (Exception) { }
+                catch (Exception ex)
+                {
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                }
                 session.BeginReceive(new AsyncCallback(OnReceiveSink), args);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 sessions.Remove(local.Address);
             }
         }
@@ -284,7 +315,17 @@ namespace OpenSource.UPnP
             {
                 Uri locuri = null;
                 string location = msg.GetTag("Location");
-                if (location != null && location.Length > 0) { try { locuri = new Uri(location); } catch (Exception) { } }
+                if (location != null && location.Length > 0) 
+                { 
+                    try 
+                    { 
+                        locuri = new Uri(location); 
+                    } 
+                    catch (Exception ex)
+                    {
+                        OpenSource.Utilities.EventLogger.Log(ex);
+                    }
+                }
                 OnNotify(src, msg.LocalEndPoint, locuri, Alive, USN, ST, MaxAge, msg);
             }
             else if (msg.Directive == "M-SEARCH" && OnSearch != null)
@@ -332,7 +373,10 @@ namespace OpenSource.UPnP
                     usession.Send(buffer, buffer.Length, Utils.UpnpMulticastV4EndPoint);
                     usession.Send(buffer, buffer.Length, Utils.UpnpMulticastV4EndPoint);
                 }
-                catch (SocketException) { }
+                catch (SocketException ex)
+                {
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                }
             }
             else if (netinterface.AddressFamily == AddressFamily.InterNetworkV6 && netinterface.ScopeId != 0)
             {
@@ -350,7 +394,10 @@ namespace OpenSource.UPnP
                         usession.Send(buffer, buffer.Length, Utils.UpnpMulticastV6EndPoint1);
                     }
                 }
-                catch (SocketException) { }
+                catch (SocketException ex)
+                {
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                }
             }
         }
 
@@ -369,7 +416,10 @@ namespace OpenSource.UPnP
             {
                 usession.Send(buffer, buffer.Length, msg.RemoteEndPoint);
             }
-            catch (SocketException) { }
+            catch (SocketException ex)
+            {
+                OpenSource.Utilities.EventLogger.Log(ex);
+            }
         }
     }
 

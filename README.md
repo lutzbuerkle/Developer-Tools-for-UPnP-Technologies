@@ -12,7 +12,7 @@ This project is open source under the Apache 2.0 license.
 
 Version
 -------
-In sync with [v0.0.58](http://opentools.homeip.net/dev-tools-for-upnp)
+In sync with [v0.0.69](http://opentools.homeip.net/dev-tools-for-upnp)
 
 License
 ========

@@ -40,6 +40,7 @@ namespace OpenSource.Utilities
         public static string VersionString = "0.01";
 
         public delegate void TrackerHandler(object obj);
+        public delegate void UpdateHandler(object name);
 
 		public struct InstanceStruct
 		{
@@ -455,6 +456,7 @@ namespace OpenSource.Utilities
             // 
             this.EventText.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.EventText.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.EventText.Font = new System.Drawing.Font("Lucida Console", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.EventText.Location = new System.Drawing.Point(0, 179);
             this.EventText.Multiline = true;
             this.EventText.Name = "EventText";
@@ -463,6 +465,7 @@ namespace OpenSource.Utilities
             this.EventText.Size = new System.Drawing.Size(472, 208);
             this.EventText.TabIndex = 1;
             this.EventText.TabStop = false;
+            this.EventText.TextChanged += new System.EventHandler(this.EventText_TextChanged);
             // 
             // splitter1
             // 
@@ -519,7 +522,7 @@ namespace OpenSource.Utilities
             this.tabPage1.Controls.Add(this.instanceListView);
             this.tabPage1.Location = new System.Drawing.Point(4, 4);
             this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Size = new System.Drawing.Size(472, 390);
+            this.tabPage1.Size = new System.Drawing.Size(472, 387);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Instances";
             // 
@@ -536,7 +539,7 @@ namespace OpenSource.Utilities
             this.instanceListView.Location = new System.Drawing.Point(0, 0);
             this.instanceListView.MultiSelect = false;
             this.instanceListView.Name = "instanceListView";
-            this.instanceListView.Size = new System.Drawing.Size(472, 390);
+            this.instanceListView.Size = new System.Drawing.Size(472, 387);
             this.instanceListView.Sorting = System.Windows.Forms.SortOrder.Ascending;
             this.instanceListView.TabIndex = 1;
             this.instanceListView.UseCompatibleStateImageBehavior = false;
@@ -688,7 +691,6 @@ namespace OpenSource.Utilities
 				int IDX = 0;
 				StringBuilder sb = new StringBuilder();
 
-				
 				do
 				{
 					SF = ST.GetFrame(IDX);
@@ -705,15 +707,11 @@ namespace OpenSource.Utilities
 						}
 					}
 					++IDX;
-				}while(SF!=null&&IDX!=7);
-				
+				}
+                while(SF!=null&&IDX!=7);
 				
 				string name = o.GetType().FullName;
-				
-				if (DataTable.ContainsKey(name)==false)
-				{
-					DataTable[name] = new ArrayList();
-				}
+				if (DataTable.ContainsKey(name) == false) DataTable[name] = new ArrayList();
 				InstanceStruct iss = new InstanceStruct();
 				iss.WR = new WeakReference(o);
 				iss.StackList = sb.ToString();
@@ -721,15 +719,22 @@ namespace OpenSource.Utilities
 
 				if (tracker != null)
 				{
-					tracker.UpdateDisplayEntry(name);
-		                    tracker.statusBar.BeginInvoke(new TrackerHandler(HandleTracker),new object[1]{o.GetType().FullName});
+					//tracker.UpdateDisplayEntry(name);
+                    tracker.instanceListView.BeginInvoke(new UpdateHandler(HandlerUpdate), new object[1] { name });
+		            tracker.statusBar.BeginInvoke(new TrackerHandler(HandleTracker), new object[1] { o.GetType().FullName });
 				}
 			}
 		}
-	        public static void HandleTracker(object name)
-	        {
-	    	    tracker.statusBar.Text = "Add: " + (string)name;
-	        }
+
+        public static void HandleTracker(object name)
+	    {
+	    	tracker.statusBar.Text = "Add: " + (string)name;
+	    }
+
+        public static void HandlerUpdate(object name)
+        {
+            tracker.UpdateDisplayEntry((string) name);
+        }
 
 		/// <summary>
 		/// Remove one to the counter for the type specified by object o.
@@ -1006,12 +1011,20 @@ namespace OpenSource.Utilities
                 fs.Close();
                 MessageBox.Show(string.Format("Exception error logged in: {0}\r\n\r\n{1}", fs.Name, "Please e-mail these exceptions to Ylian Saint-Hilaire, ylian.saint-hilaire@intel.com."), "Application Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            catch (Exception) { }
+            catch (Exception ex) 
+            {
+                OpenSource.Utilities.EventLogger.Log(ex);
+            }
         }
 
         private void InstanceTracker_FormClosing(object sender, FormClosingEventArgs e)
         {
             OpenSource.Utilities.EventLogger.OnEvent -= new OpenSource.Utilities.EventLogger.EventHandler(OnEventSink);
+        }
+
+        private void EventText_TextChanged(object sender, EventArgs e)
+        {
+
         }
 
 	}

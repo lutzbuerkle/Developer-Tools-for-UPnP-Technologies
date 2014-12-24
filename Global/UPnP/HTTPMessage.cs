@@ -159,9 +159,10 @@ namespace OpenSource.UPnP
 			{
 				TheHeaders.Remove(TagName.ToUpper());
 			}
-			catch(Exception)
+			catch(Exception ex)
 			{
-			}
+                OpenSource.Utilities.EventLogger.Log(ex);
+            }
 		}
 
 		public IDictionaryEnumerator GetHeaderEnumerator()
@@ -302,9 +303,10 @@ namespace OpenSource.UPnP
 				{
 					TheMessage.Version = HdrParser[1,2];
 				}
-				catch(Exception)
+				catch(Exception ex)
 				{
-					TheMessage.Version = "0.9";
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                    TheMessage.Version = "0.9";
 				}
 			}
 			else
@@ -359,9 +361,10 @@ namespace OpenSource.UPnP
 				{
 					cl = int.Parse(TheMessage.GetTag("Content-Length"));
 				}
-				catch(Exception)
+				catch(Exception ex)
 				{
-					cl = -1;
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                    cl = -1;
 				}
 			}
 			else

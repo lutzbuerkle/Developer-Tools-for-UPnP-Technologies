@@ -210,7 +210,7 @@ namespace OpenSource.UPnP.AV.CdsMetadata
 
 			// Ensure that any preceding carriage returns 
 			// are removed from the result string
-			int crpos = xmlResult.IndexOf(Environment.NewLine);
+			int crpos = xmlResult.IndexOf("\r\n");
 			crpos = xmlResult.IndexOf('<', crpos);
 			string trunc = xmlResult.Remove(0, crpos);
 
