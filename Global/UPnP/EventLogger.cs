@@ -100,6 +100,10 @@ namespace OpenSource.Utilities
 		}
 		public static void Log(object sender, EventLogEntryType LogType, string information) 
 		{
+            if (sender == null)
+            {
+                sender = new object();
+            }
 			if (Enabled)
 			{
 				if (ShowAll == true || LogType == EventLogEntryType.Error || LogType == EventLogEntryType.SuccessAudit)
@@ -165,7 +169,7 @@ namespace OpenSource.Utilities
                 {
                     t = t.InnerException;
                     name += " : " + t.GetType().FullName;
-                    message = t.Message;
+                    // message = t.Message;
                     // NKIDD - ADDED
                     message += "\r\n\r\nInnerException #" + i.ToString() + ":\r\nMessage: " + t.Message + "\r\nSource: " + t.Source + "\r\nStackTrace: " + t.StackTrace;
                     i++;

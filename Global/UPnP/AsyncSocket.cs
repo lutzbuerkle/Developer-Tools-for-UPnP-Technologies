@@ -277,8 +277,9 @@ namespace OpenSource.UPnP
             {
                 MainSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastLoopback, 1);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 // This will only fail if the network stack does not support this
                 // Which means you are probably running Win9x
             }
@@ -287,16 +288,18 @@ namespace OpenSource.UPnP
             {
                 MainSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(MulticastAddress));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error, "Cannot AddMembership to IPAddress: " + MulticastAddress.ToString());
             }
             try
             {
                 MainSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, local.Address.GetAddressBytes());
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error, "Cannot Set Multicast Interface to IPAddress: " + local.Address.ToString());
             }
         }
@@ -381,6 +384,7 @@ namespace OpenSource.UPnP
             }
             catch (Exception x)
             {
+                OpenSource.Utilities.EventLogger.Log(x);
                 xx = x;
             }
 
@@ -416,8 +420,9 @@ namespace OpenSource.UPnP
             {
                 src = (IPEndPoint)MainSocket.LocalEndPoint;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 src = new IPEndPoint(IPAddress.Any, 0);
             }
 
@@ -432,8 +437,9 @@ namespace OpenSource.UPnP
                 {
                     OnReceiveEvent.Fire(this, MainBuffer, BufferBeginPointer, BufferSize, 0, src, from);
                 }
-                catch (AsyncSocket.StopReadException)
+                catch (AsyncSocket.StopReadException ex)
                 {
+                    OpenSource.Utilities.EventLogger.Log(ex);
                     return;
                 }
                 if (StopThread != null)
@@ -457,8 +463,9 @@ namespace OpenSource.UPnP
                     MainSocket.BeginReceiveFrom(MainBuffer, BufferEndPointer, BufferReadLength, SocketFlags.None, ref rEP, ReceiveCB, null);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 Disconnect = true;
             }
 
@@ -509,8 +516,10 @@ namespace OpenSource.UPnP
                     MainSocket.Shutdown(SocketShutdown.Both);
                     MainSocket.Close();
                 }
-                catch (Exception)
-                { }
+                catch (Exception ex)
+                {
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                }
             }
         }
         /*
@@ -529,6 +538,7 @@ namespace OpenSource.UPnP
                     }
                     catch (Exception e)
                     {
+                        OpenSource.Utilities.EventLogger.Log(e);
                         return false;
                     }
                 }
@@ -611,8 +621,9 @@ namespace OpenSource.UPnP
                                 MainSocket.BeginSendTo(buffer, offset, length, SocketFlags.None, dest, SendCB, Tag);
                             }
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            OpenSource.Utilities.EventLogger.Log(ex);
                             OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error, "Send Failure [Normal for non-pipelined connection]");
                             Disconnect = true;
                         }
@@ -661,8 +672,9 @@ namespace OpenSource.UPnP
                             sent = MainSocket.EndSendTo(result);
                         }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        OpenSource.Utilities.EventLogger.Log(ex);
                         Disconnect = true;
                     }
                     lock (CountLock)
@@ -685,8 +697,9 @@ namespace OpenSource.UPnP
                                 MainSocket.BeginSendTo(SI.buffer, SI.offset, SI.count, SocketFlags.None, SI.dest, SendCB, SI.Tag);
                             }
                         }
-                        catch (Exception)
+                        catch (Exception ex)
                         {
+                            OpenSource.Utilities.EventLogger.Log(ex);
                             OpenSource.Utilities.EventLogger.Log(this, System.Diagnostics.EventLogEntryType.Error, "Send Failure [Normal for non-pipelined connection]");
                             Disconnect = true;
                         }
@@ -748,10 +761,11 @@ namespace OpenSource.UPnP
                     from = (IPEndPoint)rEP;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Socket Error
                 bool _OK = false;
+                OpenSource.Utilities.EventLogger.Log(ex);
                 lock (this)
                 {
                     if (SentDisconnect == false)
@@ -781,8 +795,9 @@ namespace OpenSource.UPnP
                 {
                     src = (IPEndPoint)MainSocket.LocalEndPoint;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    OpenSource.Utilities.EventLogger.Log(ex);
                     src = new IPEndPoint(IPAddress.Any, 0);
                 }
 
@@ -798,8 +813,9 @@ namespace OpenSource.UPnP
                     {
                         OnReceiveEvent.Fire(this, MainBuffer, BufferBeginPointer, BufferSize, BytesReceived, src, from);
                     }
-                    catch (AsyncSocket.StopReadException)
+                    catch (AsyncSocket.StopReadException ex)
                     {
+                        OpenSource.Utilities.EventLogger.Log(ex);
                         return;
                     }
                 }
@@ -821,8 +837,9 @@ namespace OpenSource.UPnP
                     {
                         OnReceiveEvent.Fire(this, MainBuffer, BufferBeginPointer, BufferSize, 0, src, from);
                     }
-                    catch (AsyncSocket.StopReadException)
+                    catch (AsyncSocket.StopReadException ex)
                     {
+                        OpenSource.Utilities.EventLogger.Log(ex);
                         return;
                     }
                     if (StopThread != null)
@@ -868,8 +885,9 @@ namespace OpenSource.UPnP
                         Disconnect = true;
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    OpenSource.Utilities.EventLogger.Log(ex);
                     Disconnect = true;
                 }
             }

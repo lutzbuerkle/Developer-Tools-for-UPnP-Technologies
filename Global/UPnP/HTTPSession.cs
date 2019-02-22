@@ -547,8 +547,9 @@ namespace OpenSource.UPnP
 			{
 				BytesRead = SObject.EndRead(result);
 			}
-			catch
+			catch (Exception ex)
 			{
+                OpenSource.Utilities.EventLogger.Log(ex);
 			}
 
 			if (BytesRead>0)
@@ -620,8 +621,9 @@ namespace OpenSource.UPnP
 							{
 								SObject.Seek(infoObj.RangeList[infoObj.RangeIndex].Position,SeekOrigin.Begin);
 							}
-							catch(Exception)
+							catch(Exception ex)
 							{
+                                OpenSource.Utilities.EventLogger.Log(ex);
 							}
 						}
 					}
@@ -755,8 +757,9 @@ namespace OpenSource.UPnP
 				{
 					SObject.Seek(infoObj.RangeList[0].Position,SeekOrigin.Begin);
 				}
-				catch(Exception)
+				catch(Exception ex)
 				{
+                    OpenSource.Utilities.EventLogger.Log(ex);
 					//ToDo: Fail This for invalid range
 				}
 				if (SObject.Length-SObject.Position<infoObj.RangeList[0].Length)
@@ -883,8 +886,9 @@ namespace OpenSource.UPnP
 						MainSocket.Send(StreamSendBuffer,0,BytesRead,Tag);
 					}
 				}
-				catch(ObjectDisposedException)
+				catch(ObjectDisposedException ex)
 				{
+                    OpenSource.Utilities.EventLogger.Log(ex);
 				}
 			}
 		}
@@ -1615,9 +1619,10 @@ namespace OpenSource.UPnP
 					MainSocket.Close();	
 				}
 			}
-			catch(Exception)
+			catch(Exception ex)
 			{
-			}
+                OpenSource.Utilities.EventLogger.Log(ex);
+            }
 			MainSocket = null;
 		}
 	}

@@ -200,8 +200,9 @@ namespace UPnPStackBuilder
             writer.Write(SourceCodeRepository.ReadFileStore("Android\\proguard.cfg"));
             writer.Close();
 
+            resDir = outputDirectory.CreateSubdirectory("libs");
             byte[] jar = SourceCodeRepository.ReadFileStoreBin("Android\\UPnPLibrary.jar");
-            fs = File.Create(outputDirectory.FullName + "\\UPnPLibrary.jar", jar.Length);
+            fs = File.Create(outputDirectory.FullName + "\\libs\\UPnPLibrary.jar", jar.Length);
             fs.Write(jar, 0, jar.Length);
             fs.Close();
 
@@ -302,7 +303,7 @@ namespace UPnPStackBuilder
                         nic.Append("            }" + cl);
                         nic.Append(cl);
                         nic.Append("            @Override" + cl);
-                        nic.Append("            public void OnGenericRemoteInvoke(UPnPAction sender, Attributes inParams, Attributes outParams)" + cl);
+                        nic.Append("            public void OnGenericRemoteInvoke(UPnPAction sender, Attributes inParams, List<BasicNameValuePair> outParams)" + cl);
                         nic.Append("                   throws UPnPInvokeException" + cl);
                         nic.Append("            {" + cl);
                         nic.Append("                if(" + servicename + "_InvokeCallback != null)" + cl);
@@ -358,8 +359,8 @@ namespace UPnPStackBuilder
 
                         //Convert the ReturnValue
                         if (action.HasReturnValue)
-                        {
-                            nic.Append("                    outParams.putValue(\"" + action.GetRetArg().Name + "\", " + SerializeVariable(action.GetRetArg()) + ");" + cl);
+                        {                    
+                            nic.Append("                    outParams.add(new BasicNameValuePair(\"" + action.GetRetArg().Name + "\", " + SerializeVariable(action.GetRetArg()) + "));" + cl);
                         }
 
                         //Output Argument Conversion
@@ -368,7 +369,7 @@ namespace UPnPStackBuilder
                         {
                             if (arg.Direction == "out" && !arg.IsReturnValue)
                             {
-                                nic.Append("                    outParams.putValue(\"" + arg.Name + "\", " + SerializeReferenceArgument(arg) + ");" + cl);
+                                nic.Append("                    outParams.add(new BasicNameValuePair(\"" + arg.Name + "\", " + SerializeReferenceArgument(arg) + "));" + cl);
                             }
                         }
 
@@ -394,6 +395,7 @@ namespace UPnPStackBuilder
                 cs.Append("import java.util.ArrayList;" + cl);
                 cs.Append("import java.util.List;" + cl);
                 cs.Append("import java.util.jar.Attributes;" + cl);
+                cs.Append("import org.apache.http.message.BasicNameValuePair;" + cl);
                 cs.Append(cl);
                 cs.Append("import opentools.ILib.RefParameter;" + cl);
                 cs.Append("import opentools.upnp.ArgumentDirection;" + cl);
@@ -728,14 +730,25 @@ namespace UPnPStackBuilder
                         }
                         sb.Append("Object userState, InvokeHandler userCallback)" + cl);
                         sb.Append("     {" + cl);
-                        sb.Append("         Attributes inParam = new Attributes();" + cl);
+                        sb.Append("         BasicNameValuePair[] inParam = " + cl);
+                        sb.Append("         {" + cl);
+                        bool firstParm = true;
                         foreach (UPnPArgument arg in action.Arguments)
                         {
                             if (arg.Direction == "in")
                             {
-                                sb.Append("         inParam.putValue(\"" + arg.Name + "\"," + SerializeVariable(arg) + ");" + cl);
+                                if (!firstParm)
+                                {
+                                    sb.Append("," + cl);
+                                }
+                                else
+                                {
+                                    firstParm = false;
+                                }
+                                sb.Append("             new BasicNameValuePair(\"" + arg.Name + "\"," + SerializeVariable(arg) + ")");
                             }
                         }
+                        sb.Append(cl+"         };" + cl);
                         sb.Append("         mService.GenericInvoke(\"" + action.Name + "\", inParam, userCallback, userState, new GenericInvokeHandler()" + cl);
                         sb.Append("         {" + cl);
                         sb.Append("             @Override" + cl);

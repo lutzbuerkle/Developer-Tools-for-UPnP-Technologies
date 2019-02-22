@@ -155,7 +155,11 @@ namespace OpenSource.UPnP
                 s.Write(r.postdata, 0, r.postdata.Length);
                 s.Close();
             }
-            catch (Exception) { s = null; }
+            catch (Exception ex) 
+            {
+                OpenSource.Utilities.EventLogger.Log(ex);
+                s = null; 
+            }
             if (s == null)
             {
                 PendingRequests--;
@@ -173,7 +177,10 @@ namespace OpenSource.UPnP
             {
                 r.response = (HttpWebResponse)r.request.EndGetResponse(ar);
             }
-            catch (Exception) { }
+            catch (Exception /* ex */ ) 
+            {
+                // OpenSource.Utilities.EventLogger.Log(ex);
+            }
             if (r.response == null)
             {
                 PendingRequests--;
@@ -212,8 +219,9 @@ namespace OpenSource.UPnP
                     buf = mem.ToArray();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OpenSource.Utilities.EventLogger.Log(ex);
                 PendingRequests--;
                 if (OnRequestCompleted != null) OnRequestCompleted(this, false, r.tag, r.url, null);
                 return;

@@ -214,7 +214,10 @@ namespace OpenSource.UPnP
                     TestSocket.Bind(TestEP);
                     break;
                 }
-                catch (Exception) { }
+                catch (Exception ex) 
+                {
+                    OpenSource.Utilities.EventLogger.Log(ex);
+                }
             } while (true);
 
             TestSocket.Close();

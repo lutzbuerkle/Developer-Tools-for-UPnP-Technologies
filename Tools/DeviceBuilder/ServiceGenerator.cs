@@ -447,7 +447,7 @@ namespace OpenSource.UPnP
             if (SCPD_XML == null) return null;
             UPnPService s = new UPnPService(1, null);
             UPnPDebugObject obj = new UPnPDebugObject(s);
-            obj.InvokeNonStaticMethod("ParseSCPD", new Object[1] { SCPD_XML });
+            obj.InvokeNonStaticMethod("ParseSCPD", new Object[2] { SCPD_XML, 0 });
 
             return (s);
         }

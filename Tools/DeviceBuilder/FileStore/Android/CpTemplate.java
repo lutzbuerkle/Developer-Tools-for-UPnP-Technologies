@@ -1,6 +1,7 @@
 package {{{PACKAGE}}};
 
 import java.util.jar.Attributes;
+import org.apache.http.message.BasicNameValuePair;
 import opentools.upnp.UPnPService;
 import opentools.upnp.GenericInvokeHandler;
 import opentools.upnp.UPnPServiceEventHandler;

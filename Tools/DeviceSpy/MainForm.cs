@@ -180,6 +180,7 @@ namespace UPnpSpy
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.listInfoContextMenu = new System.Windows.Forms.ContextMenu();
+            this.openWebPageMenuItem = new System.Windows.Forms.MenuItem();
             this.copyValueCpMenuItem = new System.Windows.Forms.MenuItem();
             this.copyTableCpMenuItem = new System.Windows.Forms.MenuItem();
             this.mainMenu = new System.Windows.Forms.MainMenu(this.components);
@@ -216,7 +217,6 @@ namespace UPnpSpy
             this.menuItem11 = new System.Windows.Forms.MenuItem();
             this.ClearEventLogMenuItem = new System.Windows.Forms.MenuItem();
             this.splitter2 = new System.Windows.Forms.Splitter();
-            this.openWebPageMenuItem = new System.Windows.Forms.MenuItem();
             this.SuspendLayout();
             // 
             // deviceTree
@@ -377,6 +377,13 @@ namespace UPnpSpy
             this.copyValueCpMenuItem,
             this.copyTableCpMenuItem});
             this.listInfoContextMenu.Popup += new System.EventHandler(this.listInfoContextMenu_Popup);
+            // 
+            // openWebPageMenuItem
+            // 
+            this.openWebPageMenuItem.DefaultItem = true;
+            this.openWebPageMenuItem.Index = 0;
+            resources.ApplyResources(this.openWebPageMenuItem, "openWebPageMenuItem");
+            this.openWebPageMenuItem.Click += new System.EventHandler(this.openWebPageMenuItem_Click);
             // 
             // copyValueCpMenuItem
             // 
@@ -614,13 +621,6 @@ namespace UPnpSpy
             resources.ApplyResources(this.splitter2, "splitter2");
             this.splitter2.Name = "splitter2";
             this.splitter2.TabStop = false;
-            // 
-            // openWebPageMenuItem
-            // 
-            this.openWebPageMenuItem.DefaultItem = true;
-            this.openWebPageMenuItem.Index = 0;
-            resources.ApplyResources(this.openWebPageMenuItem, "openWebPageMenuItem");
-            this.openWebPageMenuItem.Click += new System.EventHandler(this.openWebPageMenuItem_Click);
             // 
             // MainForm
             // 
@@ -991,7 +991,7 @@ namespace UPnpSpy
                     {
                         if (d.PresentationURL.StartsWith("/") == true)
                         {
-                            deviceURL = "http://" + d.RemoteEndPoint.Address.ToString() + ":" + d.PresentationURL;
+                            deviceURL = "http://" + d.RemoteEndPoint.Address.ToString() + ":" + d.RemoteEndPoint.Port.ToString() + d.PresentationURL;
                         }
                         else
                         {
@@ -1254,10 +1254,11 @@ namespace UPnpSpy
                     ((UPnPService)obj).OnSubscribe += new UPnPService.UPnPEventSubscribeHandler(HandleSubscribe);
                     foreach (UPnPStateVariable V in ((UPnPService)obj).GetStateVariables())
                     {
-                        if (V.SendEvent)
-                        {
+                        //Monitor all subscribed state variables even if the don't claim to send events.
+                        //if (V.SendEvent)
+                        //{
                             V.OnModified += new UPnPStateVariable.ModifiedHandler(HandleEvents);
-                        }
+                        //}
                     }
                     ((UPnPService)obj).Subscribe(SubscribeTime, null);
                 }

@@ -61,7 +61,6 @@ extern UPnPMulticastEvent_{{{SERVICENAME}}}_{{{VARNAME}}}_Handler UPnPOnMulticas
 
 void UPnPIPAddressListChanged(UPnPMicroStackToken MicroStackToken);
 int UPnPGetLocalPortNumber(UPnPSessionToken token);
-int   UPnPGetLocalInterfaceToHost(const UPnPSessionToken UPnPToken);
 void* UPnPGetWebServerToken(const UPnPMicroStackToken MicroStackToken);
 void UPnPSetTag(const UPnPMicroStackToken token, void *UserToken);
 void *UPnPGetTag(const UPnPMicroStackToken token);
