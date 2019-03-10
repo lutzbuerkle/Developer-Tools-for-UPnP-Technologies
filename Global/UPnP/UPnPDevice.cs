@@ -1412,15 +1412,18 @@ namespace OpenSource.UPnP
             ArrayList ResponseList = new ArrayList();
             HTTPMessage msg;
             string Location = null;
-            if (local.AddressFamily == AddressFamily.InterNetwork)
+            if (WebServerTable.ContainsKey(local.Address.ToString()))
             {
-                Location = "http://" + local.Address.ToString() + ":" + ((MiniWebServer)WebServerTable[local.Address.ToString()]).LocalIPEndPoint.Port.ToString() + "/";
-            }
-            if (local.AddressFamily == AddressFamily.InterNetworkV6)
-            {
-                string xx = local.Address.ToString();
-                xx = xx.Substring(0, xx.IndexOf("%"));
-                Location = "http://[" + xx + "]:" + ((MiniWebServer)WebServerTable[local.Address.ToString()]).LocalIPEndPoint.Port.ToString() + "/";
+                if (local.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    Location = "http://" + local.Address.ToString() + ":" + ((MiniWebServer)WebServerTable[local.Address.ToString()]).LocalIPEndPoint.Port.ToString() + "/";
+                }
+                if (local.AddressFamily == AddressFamily.InterNetworkV6)
+                {
+                    string xx = local.Address.ToString();
+                    xx = xx.Substring(0, xx.IndexOf("%"));
+                    Location = "http://[" + xx + "]:" + ((MiniWebServer)WebServerTable[local.Address.ToString()]).LocalIPEndPoint.Port.ToString() + "/";
+                }
             }
 
             if ((ST == "upnp:rootdevice") || (ST == "ssdp:all"))

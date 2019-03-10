@@ -438,7 +438,7 @@ namespace OpenSource.UPnP
 			}
 			while(en.MoveNext())
 			{
-				if ((String)en.Key!="CONTENT-LENGTH" || OverrideContentLength==true)
+				if (en.Value != null && ((String)en.Key!="CONTENT-LENGTH" || OverrideContentLength==true))
 				{
 					if (en.Value.GetType()==typeof(string))
 					{
