@@ -12,7 +12,7 @@ This project is open source under the Apache 2.0 license.
 
 Version
 -------
-In sync with [v0.0.69](http://opentools.homeip.net/dev-tools-for-upnp)
+In sync with [v0.0.69](https://www.meshcommander.com/upnptools)
 
 License
 ========
@@ -20,7 +20,7 @@ This project is open source under the Apache 2.0 license.
 
 Links
 -----
-[Open Software Projects by Ylian Saint Hilaire](http://opentools.homeip.net/dev-tools-for-upnp)  
+[Open Software Projects by Ylian Saint Hilaire](https://www.meshcommander.com/upnptools)  
 [Intel's forums on the UPnP tools](http://software.intel.com/en-us/forums/intel-tools-for-upnp-technology/)  
 [Intel® Software for UPnP Technology: Download Tools (2009)](http://software.intel.com/en-us/articles/intel-software-for-upnp-technology-download-tools)  
 
