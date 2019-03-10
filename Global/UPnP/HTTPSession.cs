@@ -1036,7 +1036,7 @@ namespace OpenSource.UPnP
 				{
 					this.Close();
 				}
-				else if (this.Headers.GetTag("connection").ToUpper()=="CLOSE")
+				else if (this.Headers.GetTag("Connection").ToUpper() == "CLOSE")
 				{
 					this.Close();
 				}
@@ -1589,7 +1589,14 @@ namespace OpenSource.UPnP
 					if (MainSocket!=null)
 					{
 						MainSocket.Send(Packet.RawPacket);
-						if (Packet.StatusCode>=200) this.SET_REQUEST_ANSWERED();
+						if (Packet.StatusCode >= 200)
+						{
+							while (MainSocket.Pending > 0)
+							{
+								Thread.Sleep(10);
+							}
+							this.SET_REQUEST_ANSWERED();
+						}
 					}
 				}
 				else
